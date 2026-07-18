@@ -1,0 +1,74 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using PIPDC.Domain.Entities;
+using PIPDC.Domain.Enums;
+
+namespace PIPDC.Infrastructure.Data.Configurations;
+
+public class PropertyConfiguration : IEntityTypeConfiguration<Property>
+{
+    public void Configure(EntityTypeBuilder<Property> builder)
+    {
+        builder.Property(p => p.Title)
+            .IsRequired()
+            .HasMaxLength(200);
+
+        builder.Property(p => p.Description)
+            .IsRequired()
+            .HasMaxLength(4000);
+
+        builder.Property(p => p.Price)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(p => p.Address)
+            .IsRequired()
+            .HasMaxLength(500);
+
+        builder.Property(p => p.State)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        builder.Property(p => p.City)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        builder.Property(p => p.PropertyType)
+            .HasConversion<string>();
+
+        builder.Property(p => p.ListingType)
+            .HasConversion<string>();
+
+        builder.Property(p => p.Status)
+            .HasConversion<string>();
+
+        builder.HasOne(p => p.Agent)
+            .WithMany(a => a.Properties)
+            .HasForeignKey(p => p.AgentId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(p => p.PropertyImages)
+            .WithOne(i => i.Property)
+            .HasForeignKey(i => i.PropertyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(p => p.Enquiries)
+            .WithOne(e => e.Property)
+            .HasForeignKey(e => e.PropertyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasMany(p => p.SavedByUsers)
+            .WithOne(s => s.Property)
+            .HasForeignKey(s => s.PropertyId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(p => p.SaleRecord)
+            .WithOne(s => s.Property)
+            .HasForeignKey<SaleRecord>(s => s.PropertyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(p => p.LeaseRecord)
+            .WithOne(l => l.Property)
+            .HasForeignKey<LeaseRecord>(l => l.PropertyId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
