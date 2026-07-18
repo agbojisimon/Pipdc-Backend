@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PIPDC.Application.Auth;
 using PIPDC.Domain.Auth;
-using PIPDC.Infrastructure.Identity;
+using PIPDC.Domain.Entities;
 using PIPDC.Infrastructure.Data;
 
 namespace PIPDC.API.Controllers;

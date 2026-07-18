@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using PIPDC.Application.Auth;
 using PIPDC.Infrastructure.Auth;
-using PIPDC.Infrastructure.Identity;
+using PIPDC.Domain.Entities;
 using PIPDC.Infrastructure.Data;
 
 namespace PIPDC.Infrastructure;
