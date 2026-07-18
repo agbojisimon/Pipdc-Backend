@@ -12,9 +12,8 @@ public static class RoleSeeder
         var roles = new[]
         {
             Roles.Admin,
-            Roles.PropertyManager,
-            Roles.InvestmentOfficer,
-            Roles.Investor
+            Roles.Agent,
+            Roles.User
         };
 
         foreach (var role in roles)
