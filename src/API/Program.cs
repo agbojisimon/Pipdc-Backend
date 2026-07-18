@@ -1,4 +1,5 @@
 using PIPDC.API.Extensions;
+using PIPDC.Application;
 using PIPDC.Infrastructure.Data;
 using PIPDC.Infrastructure;
 using Scalar.AspNetCore;
@@ -12,6 +13,7 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddApplication();
 
 var app = builder.Build();
 

@@ -6,9 +6,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using PIPDC.Application.Auth;
+using PIPDC.Application.Data;
 using PIPDC.Infrastructure.Auth;
 using PIPDC.Domain.Entities;
 using PIPDC.Infrastructure.Data;
+using PIPDC.Application.Properties;
 
 namespace PIPDC.Infrastructure;
 
@@ -18,6 +20,8 @@ public static class DependencyInjection
     {
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(config.GetConnectionString("DefaultConnection")));
+
+        services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<AppDbContext>());
 
         services.AddIdentity<AppUser, IdentityRole>(options =>
             {
@@ -66,6 +70,7 @@ public static class DependencyInjection
         services.AddAuthorization();
 
         services.AddScoped<ITokenService, TokenService>();
+        services.AddScoped<IPropertyService, PropertyService>();
 
         return services;
     }
