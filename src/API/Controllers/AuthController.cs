@@ -37,7 +37,7 @@ public class AuthController(
         if (!result.Succeeded)
             return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
 
-        await userManager.AddToRoleAsync(user, Roles.Investor);
+        await userManager.AddToRoleAsync(user, Roles.User);
         return Ok();
     }
 
