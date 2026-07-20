@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.JsonWebTokens;
 using PIPDC.API.Extensions;
 using PIPDC.Application.Agents;
 using PIPDC.Application.Auth;
@@ -29,7 +30,7 @@ public class AgentsController(IAgentService agentService) : ControllerBase
     [HttpGet("me")]
     public async Task<IActionResult> GetMyProfile(CancellationToken ct)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
         var result = await agentService.GetMyProfileAsync(userId, ct);
         return result.ToActionResult();
     }
