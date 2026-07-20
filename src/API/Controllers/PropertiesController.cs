@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.JsonWebTokens;
 using PIPDC.API.Extensions;
 using PIPDC.Application.Properties;
 
@@ -27,7 +29,10 @@ public class PropertiesController(IPropertyService propertyService) : Controller
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreatePropertyRequest request, CancellationToken ct)
     {
-        var result = await propertyService.CreateAsync(request, ct);
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
+        var roles = User.FindAll("role").Select(c => c.Value).ToList();
+
+        var result = await propertyService.CreateAsync(request, userId, roles, ct);
 
         if (result.IsFailure)
             return result.ToActionResult();

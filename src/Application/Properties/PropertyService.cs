@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PIPDC.Application.Auth;
 using PIPDC.Application.Common;
 using PIPDC.Application.Data;
 using PIPDC.Domain.Common;
@@ -103,11 +104,32 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
         return Result<PropertyDto>.Success(property.ToDto());
     }
 
-    public async Task<Result<PropertyDto>> CreateAsync(CreatePropertyRequest request, CancellationToken ct)
+    public async Task<Result<PropertyDto>> CreateAsync(CreatePropertyRequest request, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
     {
-        if (!await dbContext.Agents.AnyAsync(a => a.Id == request.AgentId, ct))
+        int agentId;
+
+        if (currentUserRoles.Contains(Roles.Agent))
+        {
+            var agent = await dbContext.Agents.FirstOrDefaultAsync(a => a.UserId == currentUserId, ct);
+            if (agent is null)
+                return Result<PropertyDto>.Failure(
+                    Error.Validation("property.nolinkedagent", "Your account has no linked agent profile — contact an administrator."));
+
+            agentId = agent.Id;
+        }
+        else if (currentUserRoles.Contains(Roles.Admin))
+        {
+            if (!await dbContext.Agents.AnyAsync(a => a.Id == request.AgentId, ct))
+                return Result<PropertyDto>.Failure(
+                    Error.Validation("property.invalidagent", $"Agent with id {request.AgentId} does not exist."));
+
+            agentId = request.AgentId;
+        }
+        else
+        {
             return Result<PropertyDto>.Failure(
-                Error.Validation("property.invalidagent", $"Agent with id {request.AgentId} does not exist."));
+                Error.Unauthorized("property.unauthorized", "You are not authorized to create a property."));
+        }
 
         if (!Enum.TryParse<PropertyType>(request.PropertyType, true, out var propertyType))
             return Result<PropertyDto>.Failure(
@@ -131,7 +153,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             PropertyType = propertyType,
             ListingType = listingType,
             Status = PropertyStatus.Available,
-            AgentId = request.AgentId,
+            AgentId = agentId,
             CreatedAt = DateTime.UtcNow
         };
 
