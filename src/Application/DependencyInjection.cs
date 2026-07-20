@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using PIPDC.Application.Agents;
+using PIPDC.Application.Enquiries;
 using PIPDC.Application.Properties;
 
 namespace PIPDC.Application;
@@ -10,6 +11,7 @@ public static class DependencyInjection
     {
         services.AddScoped<IPropertyService, PropertyService>();
         services.AddScoped<IAgentService, AgentService>();
+        services.AddScoped<IEnquiryService, EnquiryService>();
 
         return services;
     }
