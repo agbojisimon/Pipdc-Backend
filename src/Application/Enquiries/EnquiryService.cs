@@ -24,45 +24,14 @@ public class EnquiryService(IAppDbContext dbContext) : IEnquiryService
             query = query.Where(e => propertyIds.Contains(e.PropertyId));
         }
 
-        if (!string.IsNullOrWhiteSpace(q.Keyword))
-        {
-            var keyword = q.Keyword.ToLower();
-            query = query.Where(e => e.FullName.ToLower().Contains(keyword)
-                                  || e.Email.ToLower().Contains(keyword)
-                                  || e.Message.ToLower().Contains(keyword));
-        }
-
-        if (Enum.TryParse<EnquiryStatus>(q.Status, true, out var status))
-            query = query.Where(e => e.Status == status);
-
-        if (q.PropertyId.HasValue)
-            query = query.Where(e => e.PropertyId == q.PropertyId.Value);
-
+        query = ApplyFilters(query, q);
         var totalCount = await query.CountAsync(ct);
 
-        query = q.SortBy?.ToLower() switch
-        {
-            "status" => q.SortDescending ? query.OrderByDescending(e => e.Status)
-                                         : query.OrderBy(e => e.Status),
-            _ => q.SortDescending ? query.OrderByDescending(e => e.CreatedAt)
-                                  : query.OrderBy(e => e.CreatedAt)
-        };
+        query = ApplySorting(query, q);
 
-        var items = await query
+        var items = await Project(query)
             .Skip((q.PageNumber - 1) * q.PageSize)
             .Take(q.PageSize)
-            .Select(e => new EnquiryDto(
-                e.Id,
-                e.FullName,
-                e.Email,
-                e.Phone,
-                e.Message,
-                e.Status.ToString(),
-                e.PropertyId,
-                e.Property.Title,
-                e.UserId,
-                e.CreatedAt,
-                e.UpdatedAt))
             .ToListAsync(ct);
 
         return Result<PaginatedResult<EnquiryDto>>.Success(
@@ -73,45 +42,14 @@ public class EnquiryService(IAppDbContext dbContext) : IEnquiryService
     {
         IQueryable<Enquiry> query = dbContext.Enquiries.Where(e => e.UserId == userId);
 
-        if (!string.IsNullOrWhiteSpace(q.Keyword))
-        {
-            var keyword = q.Keyword.ToLower();
-            query = query.Where(e => e.FullName.ToLower().Contains(keyword)
-                                  || e.Email.ToLower().Contains(keyword)
-                                  || e.Message.ToLower().Contains(keyword));
-        }
-
-        if (Enum.TryParse<EnquiryStatus>(q.Status, true, out var status))
-            query = query.Where(e => e.Status == status);
-
-        if (q.PropertyId.HasValue)
-            query = query.Where(e => e.PropertyId == q.PropertyId.Value);
-
+        query = ApplyFilters(query, q);
         var totalCount = await query.CountAsync(ct);
 
-        query = q.SortBy?.ToLower() switch
-        {
-            "status" => q.SortDescending ? query.OrderByDescending(e => e.Status)
-                                         : query.OrderBy(e => e.Status),
-            _ => q.SortDescending ? query.OrderByDescending(e => e.CreatedAt)
-                                  : query.OrderBy(e => e.CreatedAt)
-        };
+        query = ApplySorting(query, q);
 
-        var items = await query
+        var items = await Project(query)
             .Skip((q.PageNumber - 1) * q.PageSize)
             .Take(q.PageSize)
-            .Select(e => new EnquiryDto(
-                e.Id,
-                e.FullName,
-                e.Email,
-                e.Phone,
-                e.Message,
-                e.Status.ToString(),
-                e.PropertyId,
-                e.Property.Title,
-                e.UserId,
-                e.CreatedAt,
-                e.UpdatedAt))
             .ToListAsync(ct);
 
         return Result<PaginatedResult<EnquiryDto>>.Success(
@@ -122,6 +60,8 @@ public class EnquiryService(IAppDbContext dbContext) : IEnquiryService
     {
         var enquiry = await dbContext.Enquiries
             .Include(e => e.Property)
+                .ThenInclude(p => p.Agent)
+                .ThenInclude(a => a.User)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
 
         if (enquiry is null)
@@ -131,6 +71,12 @@ public class EnquiryService(IAppDbContext dbContext) : IEnquiryService
         var access = await CanManageEnquiryAsync(enquiry, currentUserId, currentUserRoles, ct);
         if (access.IsFailure)
             return Result<EnquiryDto>.Failure(access.Error);
+
+        if (!currentUserRoles.Contains(Roles.Admin) && enquiry.AgentReadAt is null)
+        {
+            enquiry.AgentReadAt = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(ct);
+        }
 
         return Result<EnquiryDto>.Success(enquiry.ToDto());
     }
@@ -158,6 +104,8 @@ public class EnquiryService(IAppDbContext dbContext) : IEnquiryService
 
         var created = await dbContext.Enquiries
             .Include(e => e.Property)
+                .ThenInclude(p => p.Agent)
+                .ThenInclude(a => a.User)
             .FirstAsync(e => e.Id == enquiry.Id, ct);
 
         return Result<EnquiryDto>.Success(created.ToDto());
@@ -167,6 +115,8 @@ public class EnquiryService(IAppDbContext dbContext) : IEnquiryService
     {
         var enquiry = await dbContext.Enquiries
             .Include(e => e.Property)
+                .ThenInclude(p => p.Agent)
+                .ThenInclude(a => a.User)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
 
         if (enquiry is null)
@@ -210,6 +160,150 @@ public class EnquiryService(IAppDbContext dbContext) : IEnquiryService
 
         return Result.Success();
     }
+
+    public async Task<Result<PaginatedResult<AgentEnquirySummaryDto>>> GetAgentSummariesAsync(EnquiryQueryParameters q, CancellationToken ct)
+    {
+        var aggregates = await dbContext.Enquiries
+            .GroupBy(e => e.Property.AgentId)
+            .Select(g => new
+            {
+                AgentId = g.Key,
+                TotalEnquiries = g.Count(),
+                UnreadEnquiries = g.Count(e => e.AgentReadAt == null),
+                LatestEnquiryAt = g.Max(e => e.CreatedAt)
+            })
+            .ToListAsync(ct);
+
+        var agentIds = aggregates.Select(a => a.AgentId).ToList();
+
+        var agents = await dbContext.Agents
+            .Where(a => agentIds.Contains(a.Id))
+            .Include(a => a.User)
+            .ToListAsync(ct);
+        var agentById = agents.ToDictionary(a => a.Id);
+
+        List<AgentEnquirySummaryDto> items = aggregates
+            .Select(a => new AgentEnquirySummaryDto(
+                a.AgentId,
+                agentById.TryGetValue(a.AgentId, out var agent) ? agent.User?.FullName ?? string.Empty : string.Empty,
+                a.TotalEnquiries,
+                a.UnreadEnquiries,
+                a.LatestEnquiryAt))
+            .ToList();
+
+        items = q.SortBy?.ToLower() switch
+        {
+            "unread" => q.SortDescending ? items.OrderByDescending(s => s.UnreadEnquiries).ThenBy(s => s.AgentId).ToList()
+                                         : items.OrderBy(s => s.UnreadEnquiries).ThenBy(s => s.AgentId).ToList(),
+            "name" => q.SortDescending ? items.OrderByDescending(s => s.AgentName).ThenBy(s => s.AgentId).ToList()
+                                       : items.OrderBy(s => s.AgentName).ThenBy(s => s.AgentId).ToList(),
+            _ => q.SortDescending ? items.OrderByDescending(s => s.LatestEnquiryAt).ThenBy(s => s.AgentId).ToList()
+                                  : items.OrderBy(s => s.LatestEnquiryAt).ThenBy(s => s.AgentId).ToList()
+        };
+
+        var totalCount = items.Count;
+
+        var pagedItems = items
+            .Skip((q.PageNumber - 1) * q.PageSize)
+            .Take(q.PageSize)
+            .ToList();
+
+        return Result<PaginatedResult<AgentEnquirySummaryDto>>.Success(
+            PaginatedResult<AgentEnquirySummaryDto>.Create(pagedItems, totalCount, q.PageNumber, q.PageSize));
+    }
+
+    public async Task<Result<PaginatedResult<EnquiryDto>>> GetByAgentAsync(int agentId, EnquiryQueryParameters q, CancellationToken ct)
+    {
+        IQueryable<Enquiry> query = dbContext.Enquiries.Where(e => e.Property.AgentId == agentId);
+
+        query = ApplyFilters(query, q);
+        var totalCount = await query.CountAsync(ct);
+
+        query = ApplySorting(query, q);
+
+        var items = await Project(query)
+            .Skip((q.PageNumber - 1) * q.PageSize)
+            .Take(q.PageSize)
+            .ToListAsync(ct);
+
+        return Result<PaginatedResult<EnquiryDto>>.Success(
+            PaginatedResult<EnquiryDto>.Create(items, totalCount, q.PageNumber, q.PageSize));
+    }
+
+    public async Task<Result<AgentNotifyResultDto>> NotifyAgentAsync(int id, CancellationToken ct)
+    {
+        var enquiry = await dbContext.Enquiries
+            .Include(e => e.Property)
+                .ThenInclude(p => p.Agent)
+                .ThenInclude(a => a.User)
+            .FirstOrDefaultAsync(e => e.Id == id, ct);
+
+        if (enquiry is null)
+            return Result<AgentNotifyResultDto>.Failure(
+                Error.NotFound("enquiry.notfound", $"Enquiry with id {id} was not found."));
+
+        return Result<AgentNotifyResultDto>.Success(new AgentNotifyResultDto(
+            enquiry.Id,
+            enquiry.Status.ToString(),
+            enquiry.FullName,
+            enquiry.Email,
+            enquiry.Phone,
+            enquiry.Message,
+            enquiry.Property.AgentId,
+            enquiry.Property.Agent.User.FullName,
+            enquiry.Property.Agent.User.Email ?? string.Empty,
+            enquiry.PropertyId,
+            enquiry.Property.Title,
+            enquiry.Property.Slug,
+            enquiry.AgentReadAt));
+    }
+
+    private static IQueryable<Enquiry> ApplyFilters(IQueryable<Enquiry> query, EnquiryQueryParameters q)
+    {
+        if (!string.IsNullOrWhiteSpace(q.Keyword))
+        {
+            var keyword = q.Keyword.ToLower();
+            query = query.Where(e => e.FullName.ToLower().Contains(keyword)
+                                  || e.Email.ToLower().Contains(keyword)
+                                  || e.Message.ToLower().Contains(keyword));
+        }
+
+        if (Enum.TryParse<EnquiryStatus>(q.Status, true, out var status))
+            query = query.Where(e => e.Status == status);
+
+        if (q.PropertyId.HasValue)
+            query = query.Where(e => e.PropertyId == q.PropertyId.Value);
+
+        return query;
+    }
+
+    private static IQueryable<Enquiry> ApplySorting(IQueryable<Enquiry> query, EnquiryQueryParameters q) =>
+        q.SortBy?.ToLower() switch
+        {
+            "status" => q.SortDescending ? query.OrderByDescending(e => e.Status)
+                                         : query.OrderBy(e => e.Status),
+            _ => q.SortDescending ? query.OrderByDescending(e => e.CreatedAt)
+                                  : query.OrderBy(e => e.CreatedAt)
+        };
+
+    private static IQueryable<EnquiryDto> Project(IQueryable<Enquiry> query) =>
+        query.Select(e => new EnquiryDto(
+            e.Id,
+            e.FullName,
+            e.Email,
+            e.Phone,
+            e.Message,
+            e.Status.ToString(),
+            e.PropertyId,
+            e.Property.Title,
+            e.Property.Slug,
+            e.UserId,
+            e.Property.AgentId,
+            e.Property.Agent.User.FullName,
+            e.AgentReadAt,
+            e.AgentReadAt != null,
+            e.CreatedAt,
+            e.UpdatedAt));
 
     private async Task<Result> CanManageEnquiryAsync(Enquiry enquiry, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
     {

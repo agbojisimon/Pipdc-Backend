@@ -92,7 +92,8 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             return Result<PropertyDto>.Failure(
                 Error.NotFound("property.notfound", $"Property with id {id} was not found."));
 
-        return Result<PropertyDto>.Success(property.ToDto(await IsSavedAsync(id, currentUserId, ct)));
+        return Result<PropertyDto>.Success(property.ToDto(
+            await IsSavedAsync(id, currentUserId, ct), await EnquiryCountAsync(id, ct)));
     }
 
     public async Task<Result<PropertyDto>> GetBySlugAsync(string slug, string? currentUserId, CancellationToken ct)
@@ -107,7 +108,8 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             return Result<PropertyDto>.Failure(
                 Error.NotFound("property.notfound", $"Property with slug '{slug}' was not found."));
 
-        return Result<PropertyDto>.Success(property.ToDto(await IsSavedAsync(property.Id, currentUserId, ct)));
+        return Result<PropertyDto>.Success(property.ToDto(
+            await IsSavedAsync(property.Id, currentUserId, ct), await EnquiryCountAsync(property.Id, ct)));
     }
 
     public async Task<Result<IReadOnlyList<PropertyDto>>> GetFeaturedAsync(string? currentUserId, CancellationToken ct)
@@ -193,7 +195,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
         await dbContext.SaveChangesAsync(ct);
 
         var created = await LoadPropertyAsync(property.Id, ct);
-        return Result<PropertyDto>.Success(created!.ToDto());
+        return Result<PropertyDto>.Success(created!.ToDto(enquiryCount: 0));
     }
 
     public async Task<Result<PropertyDto>> UpdateAsync(int id, UpdatePropertyRequest request, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
@@ -258,7 +260,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
         await dbContext.SaveChangesAsync(ct);
 
         var updated = await LoadPropertyAsync(id, ct);
-        return Result<PropertyDto>.Success(updated!.ToDto());
+        return Result<PropertyDto>.Success(updated!.ToDto(enquiryCount: await EnquiryCountAsync(id, ct)));
     }
 
     public async Task<Result<PropertyDto>> SetFeaturedAsync(int id, bool featured, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
@@ -278,7 +280,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
         await dbContext.SaveChangesAsync(ct);
 
         var updated = await LoadPropertyAsync(id, ct);
-        return Result<PropertyDto>.Success(updated!.ToDto());
+        return Result<PropertyDto>.Success(updated!.ToDto(enquiryCount: await EnquiryCountAsync(id, ct)));
     }
 
     public async Task<Result> DeleteAsync(int id, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
@@ -390,6 +392,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             p.Agent.User.FullName,
             p.Agent.PhotoUrl,
             currentUserId == null ? false : p.SavedByUsers.Any(s => s.UserId == currentUserId),
+            p.Enquiries.Count(),
             p.CreatedAt,
             p.UpdatedAt));
 
@@ -426,6 +429,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             p.AgentName,
             p.AgentPhoto,
             p.IsSaved,
+            p.EnquiryCount,
             p.CreatedAt,
             p.UpdatedAt);
 
@@ -443,6 +447,9 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
 
         return await dbContext.SavedProperties.AnyAsync(s => s.PropertyId == propertyId && s.UserId == currentUserId, ct);
     }
+
+    private Task<int> EnquiryCountAsync(int propertyId, CancellationToken ct) =>
+        dbContext.Enquiries.CountAsync(e => e.PropertyId == propertyId, ct);
 
     private async Task<Result<int>> ResolveAgentIdAsync(int? requestedAgentId, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
     {
@@ -604,6 +611,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
         string AgentName,
         string? AgentPhoto,
         bool IsSaved,
+        int EnquiryCount,
         DateTime CreatedAt,
         DateTime? UpdatedAt);
 }
