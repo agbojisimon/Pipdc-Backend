@@ -6,5 +6,13 @@ public enum PropertyType
     Commercial,
     Land,
     Industrial,
-    Mixed
+    Mixed,
+    DetachedHouse,
+    SemiDetached,
+    Terrace,
+    Apartment,
+    Penthouse,
+    Villa,
+    Mansion,
+    Townhouse
 }

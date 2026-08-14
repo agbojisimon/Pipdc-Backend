@@ -35,25 +35,29 @@ public class AgentService(IAppDbContext dbContext, UserManager<AppUser> userMana
         };
 
         var items = await query
-            .Skip((q.PageNumber - 1) * q.PageSize)
+            .Skip((q.EffectivePageNumber - 1) * q.PageSize)
             .Take(q.PageSize)
             .Select(a => new AgentDto(
                 a.Id,
                 a.Bio,
+                a.Title,
+                a.PhotoUrl,
                 a.AgencyName,
                 a.LicenseNumber,
                 a.PhoneNumber,
                 a.IsVerified,
+                a.User.FullName,
                 a.UserId,
                 a.User.Email!,
                 a.User.FirstName,
                 a.User.LastName,
                 a.CreatedAt,
-                a.UpdatedAt))
+                a.UpdatedAt,
+                a.Properties.Count))
             .ToListAsync(ct);
 
         return Result<PaginatedResult<AgentDto>>.Success(
-            PaginatedResult<AgentDto>.Create(items, totalCount, q.PageNumber, q.PageSize));
+            PaginatedResult<AgentDto>.Create(items, totalCount, q.EffectivePageNumber, q.PageSize));
     }
 
     public async Task<Result<AgentDto>> GetByIdAsync(int id, CancellationToken ct)
@@ -66,7 +70,9 @@ public class AgentService(IAppDbContext dbContext, UserManager<AppUser> userMana
             return Result<AgentDto>.Failure(
                 Error.NotFound("agent.notfound", $"Agent with id {id} was not found."));
 
-        return Result<AgentDto>.Success(agent.ToDto());
+        var propertyCount = await dbContext.Properties.CountAsync(p => p.AgentId == id, ct);
+
+        return Result<AgentDto>.Success(agent.ToDto(propertyCount));
     }
 
     public async Task<Result<AgentDto>> GetMyProfileAsync(string userId, CancellationToken ct)
@@ -79,7 +85,9 @@ public class AgentService(IAppDbContext dbContext, UserManager<AppUser> userMana
             return Result<AgentDto>.Failure(
                 Error.NotFound("agent.notfound", "You do not have an agent profile."));
 
-        return Result<AgentDto>.Success(agent.ToDto());
+        var propertyCount = await dbContext.Properties.CountAsync(p => p.AgentId == agent.Id, ct);
+
+        return Result<AgentDto>.Success(agent.ToDto(propertyCount));
     }
 
     public async Task<Result<AgentDto>> CreateAsync(CreateAgentRequest request, CancellationToken ct)
@@ -109,6 +117,8 @@ public class AgentService(IAppDbContext dbContext, UserManager<AppUser> userMana
 
         var agent = new Agent
         {
+            Title = request.Title,
+            PhotoUrl = request.PhotoUrl,
             Bio = request.Bio,
             AgencyName = request.AgencyName,
             LicenseNumber = request.LicenseNumber,
@@ -125,7 +135,7 @@ public class AgentService(IAppDbContext dbContext, UserManager<AppUser> userMana
             .Include(a => a.User)
             .FirstAsync(a => a.Id == agent.Id, ct);
 
-        return Result<AgentDto>.Success(created.ToDto());
+        return Result<AgentDto>.Success(created.ToDto(0));
     }
 
     public async Task<Result<AgentDto>> UpdateAsync(int id, UpdateAgentRequest request, CancellationToken ct)
@@ -138,6 +148,8 @@ public class AgentService(IAppDbContext dbContext, UserManager<AppUser> userMana
             return Result<AgentDto>.Failure(
                 Error.NotFound("agent.notfound", $"Agent with id {id} was not found."));
 
+        agent.Title = request.Title;
+        agent.PhotoUrl = request.PhotoUrl;
         agent.Bio = request.Bio;
         agent.AgencyName = request.AgencyName;
         agent.LicenseNumber = request.LicenseNumber;
@@ -147,7 +159,9 @@ public class AgentService(IAppDbContext dbContext, UserManager<AppUser> userMana
 
         await dbContext.SaveChangesAsync(ct);
 
-        return Result<AgentDto>.Success(agent.ToDto());
+        var propertyCount = await dbContext.Properties.CountAsync(p => p.AgentId == id, ct);
+
+        return Result<AgentDto>.Success(agent.ToDto(propertyCount));
     }
 
     public async Task<Result> DeleteAsync(int id, CancellationToken ct)

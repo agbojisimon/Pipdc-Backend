@@ -11,6 +11,12 @@ public class AgentConfiguration : IEntityTypeConfiguration<Agent>
         builder.Property(a => a.Bio)
             .HasMaxLength(4000);
 
+        builder.Property(a => a.Title)
+            .HasMaxLength(100);
+
+        builder.Property(a => a.PhotoUrl)
+            .HasMaxLength(500);
+
         builder.Property(a => a.AgencyName)
             .IsRequired()
             .HasMaxLength(200);

@@ -11,6 +11,8 @@ namespace PIPDC.API.Controllers;
 [Route("api/enquiries")]
 public class EnquiriesController(IEnquiryService enquiryService) : ControllerBase
 {
+    private IList<string> CurrentUserRoles => User.FindAll("role").Select(c => c.Value).ToList();
+
     [AllowAnonymous]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateEnquiryRequest request, CancellationToken ct)
@@ -32,7 +34,8 @@ public class EnquiriesController(IEnquiryService enquiryService) : ControllerBas
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] EnquiryQueryParameters queryParams, CancellationToken ct)
     {
-        var result = await enquiryService.GetAllAsync(queryParams, ct);
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
+        var result = await enquiryService.GetAllAsync(queryParams, userId, CurrentUserRoles, ct);
         return result.ToActionResult();
     }
 
@@ -49,7 +52,8 @@ public class EnquiriesController(IEnquiryService enquiryService) : ControllerBas
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
-        var result = await enquiryService.GetByIdAsync(id, ct);
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
+        var result = await enquiryService.GetByIdAsync(id, userId, CurrentUserRoles, ct);
         return result.ToActionResult();
     }
 
@@ -57,7 +61,8 @@ public class EnquiriesController(IEnquiryService enquiryService) : ControllerBas
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateEnquiryRequest request, CancellationToken ct)
     {
-        var result = await enquiryService.UpdateAsync(id, request, ct);
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
+        var result = await enquiryService.UpdateAsync(id, request, userId, CurrentUserRoles, ct);
         return result.ToActionResult();
     }
 
@@ -65,7 +70,8 @@ public class EnquiriesController(IEnquiryService enquiryService) : ControllerBas
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
-        var result = await enquiryService.DeleteAsync(id, ct);
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
+        var result = await enquiryService.DeleteAsync(id, userId, CurrentUserRoles, ct);
         return result.ToActionResult();
     }
 }

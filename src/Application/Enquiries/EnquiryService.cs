@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PIPDC.Application.Auth;
 using PIPDC.Application.Common;
 using PIPDC.Application.Data;
 using PIPDC.Domain.Common;
@@ -9,9 +10,19 @@ namespace PIPDC.Application.Enquiries;
 
 public class EnquiryService(IAppDbContext dbContext) : IEnquiryService
 {
-    public async Task<Result<PaginatedResult<EnquiryDto>>> GetAllAsync(EnquiryQueryParameters q, CancellationToken ct)
+    public async Task<Result<PaginatedResult<EnquiryDto>>> GetAllAsync(EnquiryQueryParameters q, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
     {
         IQueryable<Enquiry> query = dbContext.Enquiries;
+
+        if (!currentUserRoles.Contains(Roles.Admin))
+        {
+            var propertyIds = await dbContext.Properties
+                .Where(p => p.Agent != null && p.Agent.UserId == currentUserId)
+                .Select(p => p.Id)
+                .ToListAsync(ct);
+
+            query = query.Where(e => propertyIds.Contains(e.PropertyId));
+        }
 
         if (!string.IsNullOrWhiteSpace(q.Keyword))
         {
@@ -107,7 +118,7 @@ public class EnquiryService(IAppDbContext dbContext) : IEnquiryService
             PaginatedResult<EnquiryDto>.Create(items, totalCount, q.PageNumber, q.PageSize));
     }
 
-    public async Task<Result<EnquiryDto>> GetByIdAsync(int id, CancellationToken ct)
+    public async Task<Result<EnquiryDto>> GetByIdAsync(int id, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
     {
         var enquiry = await dbContext.Enquiries
             .Include(e => e.Property)
@@ -116,6 +127,10 @@ public class EnquiryService(IAppDbContext dbContext) : IEnquiryService
         if (enquiry is null)
             return Result<EnquiryDto>.Failure(
                 Error.NotFound("enquiry.notfound", $"Enquiry with id {id} was not found."));
+
+        var access = await CanManageEnquiryAsync(enquiry, currentUserId, currentUserRoles, ct);
+        if (access.IsFailure)
+            return Result<EnquiryDto>.Failure(access.Error);
 
         return Result<EnquiryDto>.Success(enquiry.ToDto());
     }
@@ -148,7 +163,7 @@ public class EnquiryService(IAppDbContext dbContext) : IEnquiryService
         return Result<EnquiryDto>.Success(created.ToDto());
     }
 
-    public async Task<Result<EnquiryDto>> UpdateAsync(int id, UpdateEnquiryRequest request, CancellationToken ct)
+    public async Task<Result<EnquiryDto>> UpdateAsync(int id, UpdateEnquiryRequest request, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
     {
         var enquiry = await dbContext.Enquiries
             .Include(e => e.Property)
@@ -157,6 +172,10 @@ public class EnquiryService(IAppDbContext dbContext) : IEnquiryService
         if (enquiry is null)
             return Result<EnquiryDto>.Failure(
                 Error.NotFound("enquiry.notfound", $"Enquiry with id {id} was not found."));
+
+        var access = await CanManageEnquiryAsync(enquiry, currentUserId, currentUserRoles, ct);
+        if (access.IsFailure)
+            return Result<EnquiryDto>.Failure(access.Error);
 
         if (!Enum.TryParse<EnquiryStatus>(request.Status, true, out var status))
             return Result<EnquiryDto>.Failure(
@@ -174,7 +193,7 @@ public class EnquiryService(IAppDbContext dbContext) : IEnquiryService
         return Result<EnquiryDto>.Success(enquiry.ToDto());
     }
 
-    public async Task<Result> DeleteAsync(int id, CancellationToken ct)
+    public async Task<Result> DeleteAsync(int id, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
     {
         var enquiry = await dbContext.Enquiries.FindAsync([id], ct);
 
@@ -182,9 +201,27 @@ public class EnquiryService(IAppDbContext dbContext) : IEnquiryService
             return Result.Failure(
                 Error.NotFound("enquiry.notfound", $"Enquiry with id {id} was not found."));
 
+        var access = await CanManageEnquiryAsync(enquiry, currentUserId, currentUserRoles, ct);
+        if (access.IsFailure)
+            return Result.Failure(access.Error);
+
         dbContext.Enquiries.Remove(enquiry);
         await dbContext.SaveChangesAsync(ct);
 
         return Result.Success();
+    }
+
+    private async Task<Result> CanManageEnquiryAsync(Enquiry enquiry, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
+    {
+        if (currentUserRoles.Contains(Roles.Admin))
+            return Result.Success();
+
+        var ownsProperty = await dbContext.Properties.AnyAsync(
+            p => p.Id == enquiry.PropertyId && p.Agent != null && p.Agent.UserId == currentUserId, ct);
+
+        return ownsProperty
+            ? Result.Success()
+            : Result.Failure(
+                Error.Forbidden("enquiry.forbidden", "You cannot manage an enquiry for a property you do not own."));
     }
 }

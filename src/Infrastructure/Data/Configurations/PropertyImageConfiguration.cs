@@ -16,6 +16,8 @@ public class PropertyImageConfiguration : IEntityTypeConfiguration<PropertyImage
             .IsRequired()
             .HasMaxLength(200);
 
+        builder.HasIndex(i => new { i.PropertyId, i.DisplayOrder });
+
         builder.HasOne(i => i.Property)
             .WithMany(p => p.PropertyImages)
             .HasForeignKey(i => i.PropertyId)

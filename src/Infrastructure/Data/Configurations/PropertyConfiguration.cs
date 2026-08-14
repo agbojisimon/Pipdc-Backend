@@ -13,12 +13,29 @@ public class PropertyConfiguration : IEntityTypeConfiguration<Property>
             .IsRequired()
             .HasMaxLength(200);
 
+        builder.Property(p => p.Slug)
+            .IsRequired()
+            .HasMaxLength(200);
+
+        builder.HasIndex(p => p.Slug)
+            .IsUnique();
+
         builder.Property(p => p.Description)
             .IsRequired()
             .HasMaxLength(4000);
 
         builder.Property(p => p.Price)
             .HasColumnType("decimal(18,2)");
+
+        builder.Property(p => p.Currency)
+            .IsRequired()
+            .HasMaxLength(10);
+
+        builder.Property(p => p.Period)
+            .HasMaxLength(50);
+
+        builder.Property(p => p.SizeUnit)
+            .HasMaxLength(10);
 
         builder.Property(p => p.Address)
             .IsRequired()
@@ -32,6 +49,9 @@ public class PropertyConfiguration : IEntityTypeConfiguration<Property>
             .IsRequired()
             .HasMaxLength(100);
 
+        builder.Property(p => p.Area)
+            .HasMaxLength(100);
+
         builder.Property(p => p.PropertyType)
             .HasConversion<string>();
 
@@ -41,10 +61,22 @@ public class PropertyConfiguration : IEntityTypeConfiguration<Property>
         builder.Property(p => p.Status)
             .HasConversion<string>();
 
+        builder.HasIndex(p => new { p.ListingType, p.Status });
+        builder.HasIndex(p => p.City);
+        builder.HasIndex(p => p.State);
+        builder.HasIndex(p => p.Featured);
+
         builder.HasOne(p => p.Agent)
             .WithMany(a => a.Properties)
             .HasForeignKey(p => p.AgentId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(p => p.CreatedByUser)
+            .WithMany()
+            .HasForeignKey(p => p.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(p => p.CreatedByUserId);
 
         builder.HasMany(p => p.PropertyImages)
             .WithOne(i => i.Property)

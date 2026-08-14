@@ -4,23 +4,52 @@ namespace PIPDC.Application.Properties;
 
 public static class PropertyMappers
 {
-    public static PropertyDto ToDto(this Property property) =>
-        new(
+    public static PropertyDto ToDto(this Property property, bool isSaved = false)
+    {
+        var images = property.PropertyImages
+            .OrderBy(i => i.DisplayOrder)
+            .Select(i => i.Url)
+            .ToList();
+
+        var cover = property.PropertyImages
+            .Where(i => i.IsCover)
+            .Select(i => i.Url)
+            .FirstOrDefault()
+            ?? images.FirstOrDefault();
+
+        return new PropertyDto(
             property.Id,
             property.Title,
+            property.Slug,
             property.Description,
             property.Price,
-            property.Address,
-            property.State,
-            property.City,
-            property.Bedrooms,
-            property.Bathrooms,
-            property.SizeInSqM,
+            property.Currency,
+            property.Period,
+            PropertyStatusDisplay.ToFrontend(property.Status, property.ListingType),
+            PropertyTypeDisplay.ToFrontend(property.PropertyType),
             property.PropertyType.ToString(),
             property.ListingType.ToString(),
-            property.Status.ToString(),
+            property.Bedrooms,
+            property.Bathrooms,
+            property.Size,
+            property.SizeUnit,
+            property.LotSize,
+            property.YearBuilt,
+            property.Address,
+            property.City,
+            property.Area,
+            property.State,
+            property.Latitude,
+            property.Longitude,
+            images,
+            cover,
+            property.Amenities,
+            property.Featured,
             property.AgentId,
-            property.Agent.User.FullName,
+            property.Agent?.User.FullName ?? string.Empty,
+            property.Agent?.PhotoUrl,
+            isSaved,
             property.CreatedAt,
             property.UpdatedAt);
+    }
 }

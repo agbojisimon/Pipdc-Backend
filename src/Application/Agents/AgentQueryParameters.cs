@@ -7,6 +7,8 @@ public class AgentQueryParameters
     public string? SortBy { get; set; }
     public bool SortDescending { get; set; } = true;
 
+    public int? Page { get; set; }
+
     private int _pageNumber = 1;
     public int PageNumber
     {
@@ -18,6 +20,8 @@ public class AgentQueryParameters
     public int PageSize
     {
         get => _pageSize;
-        set => _pageSize = value is < 1 ? 10 : value > 50 ? 50 : value;
+        set => _pageSize = value is < 1 or > 100 ? 10 : value;
     }
+
+    public int EffectivePageNumber => Math.Max(Page ?? PageNumber, 1);
 }

@@ -10,7 +10,6 @@ using PIPDC.Application.Data;
 using PIPDC.Infrastructure.Auth;
 using PIPDC.Domain.Entities;
 using PIPDC.Infrastructure.Data;
-using PIPDC.Application.Properties;
 
 namespace PIPDC.Infrastructure;
 
@@ -56,21 +55,36 @@ public static class DependencyInjection
                 };
             });
 
+        var allowedOrigins = config.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+        if (allowedOrigins.Length == 0 && config.GetSection("Cors:AllowedOrigin").Exists())
+            allowedOrigins = [config["Cors:AllowedOrigin"]!];
+
         services.AddCors(options =>
         {
             options.AddPolicy("AllowFrontend", policy =>
             {
-                policy.WithOrigins("http://localhost:5173")
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()
-                    .AllowCredentials();
+                if (allowedOrigins.Length == 0)
+                {
+                    // Development fallback only.
+                    policy.SetIsOriginAllowed(_ => true)
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials();
+                }
+                else
+                {
+                    policy.WithOrigins(allowedOrigins)
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials();
+                }
             });
         });
 
         services.AddAuthorization();
 
         services.AddScoped<ITokenService, TokenService>();
-        services.AddScoped<IPropertyService, PropertyService>();
+        services.AddScoped<IAuthService, AuthService>();
 
         return services;
     }

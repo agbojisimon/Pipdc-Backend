@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using PIPDC.Application.Auth;
 using PIPDC.Application.Common;
@@ -10,28 +11,49 @@ namespace PIPDC.Application.Properties;
 
 public class PropertyService(IAppDbContext dbContext) : IPropertyService
 {
-    public async Task<Result<PaginatedResult<PropertyDto>>> GetAllAsync(PropertyQueryParameters q, CancellationToken ct)
+    public async Task<Result<PaginatedResult<PropertyDto>>> GetAllAsync(PropertyQueryParameters q, string? currentUserId, CancellationToken ct)
     {
         IQueryable<Property> query = dbContext.Properties;
 
-        if (!string.IsNullOrWhiteSpace(q.Keyword))
+        var keyword = q.Query ?? q.Keyword;
+        if (!string.IsNullOrWhiteSpace(keyword))
         {
-            var keyword = q.Keyword.ToLower();
-            query = query.Where(p => p.Title.ToLower().Contains(keyword)
-                                  || p.Description.ToLower().Contains(keyword));
+            var search = keyword.ToLower();
+            query = query.Where(p => p.Title.ToLower().Contains(search)
+                                  || p.Description.ToLower().Contains(search)
+                                  || p.City.ToLower().Contains(search)
+                                  || p.Area!.ToLower().Contains(search));
         }
 
-        if (!string.IsNullOrWhiteSpace(q.City))
+        if (!string.IsNullOrWhiteSpace(q.Location))
         {
-            var city = q.City.ToLower();
-            query = query.Where(p => p.City.ToLower().Contains(city));
+            var location = q.Location.ToLower();
+            query = query.Where(p => p.Area!.ToLower().Contains(location)
+                                  || p.City.ToLower().Contains(location)
+                                  || p.State.ToLower().Contains(location));
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(q.City))
+            {
+                var city = q.City.ToLower();
+                query = query.Where(p => p.City.ToLower().Contains(city));
+            }
+
+            if (!string.IsNullOrWhiteSpace(q.State))
+            {
+                var state = q.State.ToLower();
+                query = query.Where(p => p.State.ToLower().Contains(state));
+            }
         }
 
-        if (!string.IsNullOrWhiteSpace(q.State))
-        {
-            var state = q.State.ToLower();
-            query = query.Where(p => p.State.ToLower().Contains(state));
-        }
+        if (PropertyTypeDisplay.TryParse(q.Type ?? q.PropertyType, out var propertyType))
+            query = query.Where(p => p.PropertyType == propertyType);
+
+        if (Enum.TryParse<ListingType>(q.ListingType, true, out var listingType))
+            query = query.Where(p => p.ListingType == listingType);
+
+        query = ApplyStatusFilter(query, q.Status);
 
         if (q.MinPrice.HasValue)
             query = query.Where(p => p.Price >= q.MinPrice.Value);
@@ -40,188 +62,235 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             query = query.Where(p => p.Price <= q.MaxPrice.Value);
 
         if (q.Bedrooms.HasValue)
-            query = query.Where(p => p.Bedrooms == q.Bedrooms.Value);
+            query = query.Where(p => p.Bedrooms >= q.Bedrooms.Value);
 
-        if (Enum.TryParse<PropertyType>(q.PropertyType, true, out var propertyType))
-            query = query.Where(p => p.PropertyType == propertyType);
+        if (q.Bathrooms.HasValue)
+            query = query.Where(p => p.Bathrooms >= q.Bathrooms.Value);
 
-        if (Enum.TryParse<ListingType>(q.ListingType, true, out var listingType))
-            query = query.Where(p => p.ListingType == listingType);
-
-        if (Enum.TryParse<PropertyStatus>(q.Status, true, out var status))
-            query = query.Where(p => p.Status == status);
+        if (q.AgentId.HasValue)
+            query = query.Where(p => p.AgentId == q.AgentId.Value);
 
         var totalCount = await query.CountAsync(ct);
 
-        query = q.SortBy?.ToLower() switch
-        {
-            "price" => q.SortDescending ? query.OrderByDescending(p => p.Price)
-                                        : query.OrderBy(p => p.Price),
-            "title" => q.SortDescending ? query.OrderByDescending(p => p.Title)
-                                        : query.OrderBy(p => p.Title),
-            _ => q.SortDescending ? query.OrderByDescending(p => p.CreatedAt)
-                                  : query.OrderBy(p => p.CreatedAt)
-        };
+        query = ApplySorting(query, q);
 
-        var items = await query
-            .Skip((q.PageNumber - 1) * q.PageSize)
-            .Take(q.PageSize)
-            .Select(p => new PropertyDto(
-                p.Id,
-                p.Title,
-                p.Description,
-                p.Price,
-                p.Address,
-                p.State,
-                p.City,
-                p.Bedrooms,
-                p.Bathrooms,
-                p.SizeInSqM,
-                p.PropertyType.ToString(),
-                p.ListingType.ToString(),
-                p.Status.ToString(),
-                p.AgentId,
-                p.Agent.User.FullName,
-                p.CreatedAt,
-                p.UpdatedAt))
+        var items = await Project(query, currentUserId)
+            .Skip((q.EffectivePageNumber - 1) * q.EffectivePageSize)
+            .Take(q.EffectivePageSize)
             .ToListAsync(ct);
 
+        var dtos = items.Select(ToDto).ToList();
+
         return Result<PaginatedResult<PropertyDto>>.Success(
-            PaginatedResult<PropertyDto>.Create(items, totalCount, q.PageNumber, q.PageSize));
+            PaginatedResult<PropertyDto>.Create(dtos, totalCount, q.EffectivePageNumber, q.EffectivePageSize));
     }
 
-    public async Task<Result<PropertyDto>> GetByIdAsync(int id, CancellationToken ct)
+    public async Task<Result<PropertyDto>> GetByIdAsync(int id, string? currentUserId, CancellationToken ct)
     {
-        var property = await dbContext.Properties
-            .Include(p => p.Agent)
-                .ThenInclude(a => a.User)
-            .FirstOrDefaultAsync(p => p.Id == id, ct);
-
+        var property = await LoadPropertyAsync(id, ct);
         if (property is null)
             return Result<PropertyDto>.Failure(
                 Error.NotFound("property.notfound", $"Property with id {id} was not found."));
 
-        return Result<PropertyDto>.Success(property.ToDto());
+        return Result<PropertyDto>.Success(property.ToDto(await IsSavedAsync(id, currentUserId, ct)));
+    }
+
+    public async Task<Result<PropertyDto>> GetBySlugAsync(string slug, string? currentUserId, CancellationToken ct)
+    {
+        var property = await dbContext.Properties
+            .Include(p => p.Agent)
+                .ThenInclude(a => a.User)
+            .Include(p => p.PropertyImages)
+            .FirstOrDefaultAsync(p => p.Slug == slug, ct);
+
+        if (property is null)
+            return Result<PropertyDto>.Failure(
+                Error.NotFound("property.notfound", $"Property with slug '{slug}' was not found."));
+
+        return Result<PropertyDto>.Success(property.ToDto(await IsSavedAsync(property.Id, currentUserId, ct)));
+    }
+
+    public async Task<Result<IReadOnlyList<PropertyDto>>> GetFeaturedAsync(string? currentUserId, CancellationToken ct)
+    {
+        var items = await Project(
+                dbContext.Properties.Where(p => p.Featured
+                        && (p.Status == PropertyStatus.Available || p.Status == PropertyStatus.Pending))
+                    .OrderByDescending(p => p.CreatedAt),
+                currentUserId)
+            .Take(6)
+            .ToListAsync(ct);
+
+        return Result<IReadOnlyList<PropertyDto>>.Success(items.Select(ToDto).ToList());
+    }
+
+    public async Task<Result<IReadOnlyList<PropertyDto>>> GetSimilarAsync(int id, string? currentUserId, CancellationToken ct)
+    {
+        var property = await dbContext.Properties.FindAsync([id], ct);
+        if (property is null)
+            return Result<IReadOnlyList<PropertyDto>>.Failure(
+                Error.NotFound("property.notfound", $"Property with id {id} was not found."));
+
+        var items = await Project(
+                dbContext.Properties.Where(p => p.Id != id
+                        && p.PropertyType == property.PropertyType
+                        && (p.Status == PropertyStatus.Available || p.Status == PropertyStatus.Pending))
+                    .OrderByDescending(p => p.CreatedAt),
+                currentUserId)
+            .Take(3)
+            .ToListAsync(ct);
+
+        return Result<IReadOnlyList<PropertyDto>>.Success(items.Select(ToDto).ToList());
     }
 
     public async Task<Result<PropertyDto>> CreateAsync(CreatePropertyRequest request, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
     {
-        int agentId;
+        var agentIdResult = await ResolveAgentIdAsync(request.AgentId, currentUserId, currentUserRoles, ct);
+        if (agentIdResult.IsFailure)
+            return Result<PropertyDto>.Failure(agentIdResult.Error);
 
-        if (currentUserRoles.Contains(Roles.Agent))
-        {
-            var agent = await dbContext.Agents.FirstOrDefaultAsync(a => a.UserId == currentUserId, ct);
-            if (agent is null)
-                return Result<PropertyDto>.Failure(
-                    Error.Validation("property.nolinkedagent", "Your account has no linked agent profile — contact an administrator."));
-
-            agentId = agent.Id;
-        }
-        else if (currentUserRoles.Contains(Roles.Admin))
-        {
-            if (!await dbContext.Agents.AnyAsync(a => a.Id == request.AgentId, ct))
-                return Result<PropertyDto>.Failure(
-                    Error.Validation("property.invalidagent", $"Agent with id {request.AgentId} does not exist."));
-
-            agentId = request.AgentId;
-        }
-        else
-        {
+        if (!TryResolveType(request.Type ?? request.PropertyType, out var propertyType))
             return Result<PropertyDto>.Failure(
-                Error.Unauthorized("property.unauthorized", "You are not authorized to create a property."));
-        }
+                Error.Validation("property.invalidtype", $"'{request.Type ?? request.PropertyType}' is not a valid property type."));
 
-        if (!Enum.TryParse<PropertyType>(request.PropertyType, true, out var propertyType))
+        if (!TryResolveListing(request.Status, request.ListingType, out var listingType, out var status))
             return Result<PropertyDto>.Failure(
-                Error.Validation("property.invalidpropertytype", $"'{request.PropertyType}' is not a valid property type."));
+                Error.Validation("property.invalidstatus", $"'{request.Status ?? request.ListingType}' is not a valid listing status."));
 
-        if (!Enum.TryParse<ListingType>(request.ListingType, true, out var listingType))
-            return Result<PropertyDto>.Failure(
-                Error.Validation("property.invalidlistingtype", $"'{request.ListingType}' is not a valid listing type."));
+        var slug = await EnsureUniqueSlugAsync(request.Slug, request.Title, ct);
 
         var property = new Property
         {
             Title = request.Title,
             Description = request.Description,
+            Slug = slug,
             Price = request.Price,
+            Currency = string.IsNullOrWhiteSpace(request.Currency) ? "NGN" : request.Currency,
+            Period = request.Period,
+            PropertyType = propertyType,
+            ListingType = listingType,
+            Status = status,
+            Bedrooms = request.Bedrooms,
+            Bathrooms = request.Bathrooms,
+            Size = request.Size,
+            SizeUnit = string.IsNullOrWhiteSpace(request.SizeUnit) ? "sqm" : request.SizeUnit,
+            LotSize = request.LotSize,
+            YearBuilt = request.YearBuilt,
             Address = request.Address,
             State = request.State,
             City = request.City,
-            Bedrooms = request.Bedrooms,
-            Bathrooms = request.Bathrooms,
-            SizeInSqM = request.SizeInSqM,
-            PropertyType = propertyType,
-            ListingType = listingType,
-            Status = PropertyStatus.Available,
-            AgentId = agentId,
-            CreatedAt = DateTime.UtcNow
+            Area = request.Area,
+            Latitude = request.Latitude,
+            Longitude = request.Longitude,
+            Amenities = request.Amenities ?? [],
+            Featured = request.Featured,
+            AgentId = agentIdResult.Value,
+            CreatedByUserId = currentUserId,
+            CreatedAt = DateTime.UtcNow,
+            PropertyImages = BuildImages(request.Images)
         };
 
         dbContext.Properties.Add(property);
         await dbContext.SaveChangesAsync(ct);
 
-        var created = await dbContext.Properties
-            .Include(p => p.Agent)
-                .ThenInclude(a => a.User)
-            .FirstAsync(p => p.Id == property.Id, ct);
-
-        return Result<PropertyDto>.Success(created.ToDto());
+        var created = await LoadPropertyAsync(property.Id, ct);
+        return Result<PropertyDto>.Success(created!.ToDto());
     }
 
-    public async Task<Result<PropertyDto>> UpdateAsync(int id, UpdatePropertyRequest request, CancellationToken ct)
+    public async Task<Result<PropertyDto>> UpdateAsync(int id, UpdatePropertyRequest request, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
     {
-        var property = await dbContext.Properties
-            .Include(p => p.Agent)
-                .ThenInclude(a => a.User)
-            .FirstOrDefaultAsync(p => p.Id == id, ct);
-
+        var property = await LoadPropertyAsync(id, ct);
         if (property is null)
             return Result<PropertyDto>.Failure(
                 Error.NotFound("property.notfound", $"Property with id {id} was not found."));
 
-        if (!await dbContext.Agents.AnyAsync(a => a.Id == request.AgentId, ct))
-            return Result<PropertyDto>.Failure(
-                Error.Validation("property.invalidagent", $"Agent with id {request.AgentId} does not exist."));
+        var ownership = await VerifyOwnershipAsync(property, currentUserId, currentUserRoles, ct);
+        if (ownership.IsFailure)
+            return Result<PropertyDto>.Failure(ownership.Error);
 
-        if (!Enum.TryParse<PropertyType>(request.PropertyType, true, out var propertyType))
+        if (!TryResolveType(request.Type ?? request.PropertyType, out var propertyType))
             return Result<PropertyDto>.Failure(
-                Error.Validation("property.invalidpropertytype", $"'{request.PropertyType}' is not a valid property type."));
+                Error.Validation("property.invalidtype", $"'{request.Type ?? request.PropertyType}' is not a valid property type."));
 
-        if (!Enum.TryParse<ListingType>(request.ListingType, true, out var listingType))
+        if (!TryResolveListing(request.Status, request.ListingType, out var listingType, out var status))
             return Result<PropertyDto>.Failure(
-                Error.Validation("property.invalidlistingtype", $"'{request.ListingType}' is not a valid listing type."));
+                Error.Validation("property.invalidstatus", $"'{request.Status ?? request.ListingType}' is not a valid listing status."));
+
+        if (currentUserRoles.Contains(Roles.Admin) && request.AgentId.HasValue)
+        {
+            if (!await dbContext.Agents.AnyAsync(a => a.Id == request.AgentId.Value, ct))
+                return Result<PropertyDto>.Failure(
+                    Error.Validation("property.invalidagent", $"Agent with id {request.AgentId.Value} does not exist."));
+            property.AgentId = request.AgentId.Value;
+        }
 
         property.Title = request.Title;
         property.Description = request.Description;
+        property.Slug = await EnsureUniqueSlugAsync(request.Slug, request.Title, ct, excludeId: id);
         property.Price = request.Price;
+        property.Currency = string.IsNullOrWhiteSpace(request.Currency) ? "NGN" : request.Currency;
+        property.Period = request.Period;
+        property.PropertyType = propertyType;
+        property.ListingType = listingType;
+        property.Status = status;
+        property.Bedrooms = request.Bedrooms;
+        property.Bathrooms = request.Bathrooms;
+        property.Size = request.Size;
+        property.SizeUnit = string.IsNullOrWhiteSpace(request.SizeUnit) ? "sqm" : request.SizeUnit;
+        property.LotSize = request.LotSize;
+        property.YearBuilt = request.YearBuilt;
         property.Address = request.Address;
         property.State = request.State;
         property.City = request.City;
-        property.Bedrooms = request.Bedrooms;
-        property.Bathrooms = request.Bathrooms;
-        property.SizeInSqM = request.SizeInSqM;
-        property.PropertyType = propertyType;
-        property.ListingType = listingType;
-        property.AgentId = request.AgentId;
+        property.Area = request.Area;
+        property.Latitude = request.Latitude;
+        property.Longitude = request.Longitude;
+        property.Amenities = request.Amenities ?? [];
+        property.Featured = request.Featured;
+        property.UpdatedAt = DateTime.UtcNow;
+
+        if (request.Images is not null)
+        {
+            property.PropertyImages.Clear();
+            foreach (var image in BuildImages(request.Images))
+                property.PropertyImages.Add(image);
+        }
+
+        await dbContext.SaveChangesAsync(ct);
+
+        var updated = await LoadPropertyAsync(id, ct);
+        return Result<PropertyDto>.Success(updated!.ToDto());
+    }
+
+    public async Task<Result<PropertyDto>> SetFeaturedAsync(int id, bool featured, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
+    {
+        var property = await LoadPropertyAsync(id, ct);
+        if (property is null)
+            return Result<PropertyDto>.Failure(
+                Error.NotFound("property.notfound", $"Property with id {id} was not found."));
+
+        var ownership = await VerifyOwnershipAsync(property, currentUserId, currentUserRoles, ct);
+        if (ownership.IsFailure)
+            return Result<PropertyDto>.Failure(ownership.Error);
+
+        property.Featured = featured;
         property.UpdatedAt = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(ct);
 
-        var updated = await dbContext.Properties
-            .Include(p => p.Agent)
-                .ThenInclude(a => a.User)
-            .FirstAsync(p => p.Id == id, ct);
-
-        return Result<PropertyDto>.Success(updated.ToDto());
+        var updated = await LoadPropertyAsync(id, ct);
+        return Result<PropertyDto>.Success(updated!.ToDto());
     }
 
-    public async Task<Result> DeleteAsync(int id, CancellationToken ct)
+    public async Task<Result> DeleteAsync(int id, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
     {
         var property = await dbContext.Properties.FindAsync([id], ct);
-
         if (property is null)
             return Result.Failure(
                 Error.NotFound("property.notfound", $"Property with id {id} was not found."));
+
+        var ownership = await VerifyOwnershipAsync(property, currentUserId, currentUserRoles, ct);
+        if (ownership.IsFailure)
+            return Result.Failure(ownership.Error);
 
         dbContext.Properties.Remove(property);
 
@@ -237,4 +306,304 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
 
         return Result.Success();
     }
+
+    // =========================================================
+    // Helpers
+    // =========================================================
+
+    private static IQueryable<Property> ApplyStatusFilter(IQueryable<Property> query, string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+            return query;
+
+        return status.Trim() switch
+        {
+            PropertyStatusDisplay.ForSale or "ForSale" => query.Where(p =>
+                (p.Status == PropertyStatus.Available || p.Status == PropertyStatus.Pending)
+                && p.ListingType == ListingType.ForSale),
+            PropertyStatusDisplay.ForLease or "ForLease" => query.Where(p =>
+                (p.Status == PropertyStatus.Available || p.Status == PropertyStatus.Pending)
+                && p.ListingType == ListingType.ForLease),
+            PropertyStatusDisplay.Sold => query.Where(p => p.Status == PropertyStatus.Sold),
+            PropertyStatusDisplay.OffMarket or "Withdrawn" or "Leased" => query.Where(p =>
+                p.Status == PropertyStatus.Withdrawn || p.Status == PropertyStatus.Leased),
+            _ => Enum.TryParse<PropertyStatus>(status, true, out var parsed)
+                ? query.Where(p => p.Status == parsed)
+                : query
+        };
+    }
+
+    private static IQueryable<Property> ApplySorting(IQueryable<Property> query, PropertyQueryParameters q)
+    {
+        if (!string.IsNullOrWhiteSpace(q.Sort))
+        {
+            return q.Sort.Trim().ToLower() switch
+            {
+                "price-asc" => query.OrderBy(p => p.Price),
+                "price-desc" => query.OrderByDescending(p => p.Price),
+                "popular" => query.OrderByDescending(p => p.Featured).ThenByDescending(p => p.CreatedAt),
+                _ => query.OrderByDescending(p => p.CreatedAt)
+            };
+        }
+
+        return q.SortBy?.ToLower() switch
+        {
+            "price" => q.SortDescending ? query.OrderByDescending(p => p.Price)
+                                        : query.OrderBy(p => p.Price),
+            "title" => q.SortDescending ? query.OrderByDescending(p => p.Title)
+                                        : query.OrderBy(p => p.Title),
+            _ => q.SortDescending ? query.OrderByDescending(p => p.CreatedAt)
+                                  : query.OrderBy(p => p.CreatedAt)
+        };
+    }
+
+    private IQueryable<PropertyProjection> Project(IQueryable<Property> query, string? currentUserId) =>
+        query.Select(p => new PropertyProjection(
+            p.Id,
+            p.Title,
+            p.Slug,
+            p.Description,
+            p.Price,
+            p.Currency,
+            p.Period,
+            p.Status,
+            p.PropertyType,
+            p.ListingType,
+            p.Bedrooms,
+            p.Bathrooms,
+            p.Size,
+            p.SizeUnit,
+            p.LotSize,
+            p.YearBuilt,
+            p.Address,
+            p.City,
+            p.Area,
+            p.State,
+            p.Latitude,
+            p.Longitude,
+            p.PropertyImages.OrderBy(i => i.DisplayOrder).Select(i => i.Url).ToList(),
+            p.PropertyImages.Where(i => i.IsCover).Select(i => i.Url).FirstOrDefault()
+                ?? p.PropertyImages.OrderBy(i => i.DisplayOrder).Select(i => i.Url).FirstOrDefault(),
+            p.Amenities,
+            p.Featured,
+            p.AgentId,
+            p.Agent.User.FullName,
+            p.Agent.PhotoUrl,
+            currentUserId == null ? false : p.SavedByUsers.Any(s => s.UserId == currentUserId),
+            p.CreatedAt,
+            p.UpdatedAt));
+
+    private static PropertyDto ToDto(PropertyProjection p) =>
+        new(
+            p.Id,
+            p.Title,
+            p.Slug,
+            p.Description,
+            p.Price,
+            p.Currency,
+            p.Period,
+            PropertyStatusDisplay.ToFrontend(p.Status, p.ListingType),
+            PropertyTypeDisplay.ToFrontend(p.PropertyType),
+            p.PropertyType.ToString(),
+            p.ListingType.ToString(),
+            p.Bedrooms,
+            p.Bathrooms,
+            p.Size,
+            p.SizeUnit,
+            p.LotSize,
+            p.YearBuilt,
+            p.Address,
+            p.City,
+            p.Area,
+            p.State,
+            p.Latitude,
+            p.Longitude,
+            p.Images,
+            p.CoverImage,
+            p.Amenities,
+            p.Featured,
+            p.AgentId,
+            p.AgentName,
+            p.AgentPhoto,
+            p.IsSaved,
+            p.CreatedAt,
+            p.UpdatedAt);
+
+    private async Task<Property?> LoadPropertyAsync(int id, CancellationToken ct) =>
+        await dbContext.Properties
+            .Include(p => p.Agent)
+                .ThenInclude(a => a.User)
+            .Include(p => p.PropertyImages)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
+
+    private async Task<bool> IsSavedAsync(int propertyId, string? currentUserId, CancellationToken ct)
+    {
+        if (currentUserId is null)
+            return false;
+
+        return await dbContext.SavedProperties.AnyAsync(s => s.PropertyId == propertyId && s.UserId == currentUserId, ct);
+    }
+
+    private async Task<Result<int>> ResolveAgentIdAsync(int? requestedAgentId, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
+    {
+        if (currentUserRoles.Contains(Roles.Agent))
+        {
+            var agent = await dbContext.Agents.FirstOrDefaultAsync(a => a.UserId == currentUserId, ct);
+            if (agent is null)
+                return Result<int>.Failure(
+                    Error.Validation("property.nolinkedagent", "Your account has no linked agent profile — contact an administrator."));
+
+            return Result<int>.Success(agent.Id);
+        }
+
+        if (currentUserRoles.Contains(Roles.Admin))
+        {
+            if (!requestedAgentId.HasValue || !await dbContext.Agents.AnyAsync(a => a.Id == requestedAgentId.Value, ct))
+                return Result<int>.Failure(
+                    Error.Validation("property.invalidagent", "A valid agentId is required when an admin creates a property."));
+
+            return Result<int>.Success(requestedAgentId.Value);
+        }
+
+        return Result<int>.Failure(
+            Error.Unauthorized("property.unauthorized", "You are not authorized to create a property."));
+    }
+
+    private async Task<Result> VerifyOwnershipAsync(Property property, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
+    {
+        if (currentUserRoles.Contains(Roles.Admin))
+            return Result.Success();
+
+        if (currentUserRoles.Contains(Roles.Agent))
+        {
+            var agent = await dbContext.Agents.FirstOrDefaultAsync(a => a.UserId == currentUserId, ct);
+            if (agent is null || agent.Id != property.AgentId)
+                return Result.Failure(
+                    Error.Forbidden("property.forbidden", "You cannot modify a property that is not assigned to you."));
+
+            return Result.Success();
+        }
+
+        return Result.Failure(
+            Error.Unauthorized("property.unauthorized", "You are not authorized to manage properties."));
+    }
+
+    private static bool TryResolveType(string? type, out PropertyType propertyType) =>
+        PropertyTypeDisplay.TryParse(type, out propertyType);
+
+    private static bool TryResolveListing(string? statusLabel, string? listingType, out ListingType listingTypeOut, out PropertyStatus status)
+    {
+        listingTypeOut = ListingType.ForSale;
+        status = PropertyStatus.Available;
+
+        if (!string.IsNullOrWhiteSpace(listingType))
+        {
+            if (!Enum.TryParse<ListingType>(listingType, true, out var parsed))
+                return false;
+            listingTypeOut = parsed;
+        }
+
+        if (!string.IsNullOrWhiteSpace(statusLabel))
+        {
+            switch (statusLabel.Trim())
+            {
+                case PropertyStatusDisplay.ForSale:
+                case "ForSale":
+                    listingTypeOut = ListingType.ForSale;
+                    status = PropertyStatus.Available;
+                    return true;
+                case PropertyStatusDisplay.ForLease:
+                case "ForLease":
+                    listingTypeOut = ListingType.ForLease;
+                    status = PropertyStatus.Available;
+                    return true;
+                case PropertyStatusDisplay.Sold:
+                    status = PropertyStatus.Sold;
+                    return true;
+                case PropertyStatusDisplay.OffMarket:
+                case "Withdrawn":
+                    status = PropertyStatus.Withdrawn;
+                    return true;
+                case "Leased":
+                    status = PropertyStatus.Leased;
+                    return true;
+                default:
+                    return Enum.TryParse<PropertyStatus>(statusLabel, true, out status);
+            }
+        }
+
+        return true;
+    }
+
+    private static List<PropertyImage> BuildImages(List<string>? urls)
+    {
+        if (urls is null || urls.Count == 0)
+            return [];
+
+        return urls
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Select((url, index) => new PropertyImage
+            {
+                Url = url,
+                PublicId = string.Empty,
+                IsCover = index == 0,
+                DisplayOrder = index
+            })
+            .ToList();
+    }
+
+    private static string Slugify(string value)
+    {
+        var slug = Regex.Replace(value.Trim().ToLower(), "[^a-z0-9]+", "-").Trim('-');
+        return slug.Length == 0 ? "property" : slug;
+    }
+
+    private async Task<string> EnsureUniqueSlugAsync(string? slug, string title, CancellationToken ct, int? excludeId = null)
+    {
+        var baseSlug = Slugify(string.IsNullOrWhiteSpace(slug) ? title : slug);
+        var candidate = baseSlug;
+        var suffix = 2;
+
+        while (await dbContext.Properties.AnyAsync(p => p.Slug == candidate && (excludeId == null || p.Id != excludeId), ct))
+        {
+            candidate = $"{baseSlug}-{suffix}";
+            suffix++;
+        }
+
+        return candidate;
+    }
+
+    private sealed record PropertyProjection(
+        int Id,
+        string Title,
+        string Slug,
+        string Description,
+        decimal Price,
+        string Currency,
+        string? Period,
+        PropertyStatus Status,
+        PropertyType PropertyType,
+        ListingType ListingType,
+        int? Bedrooms,
+        int? Bathrooms,
+        double? Size,
+        string SizeUnit,
+        double? LotSize,
+        int? YearBuilt,
+        string Address,
+        string City,
+        string? Area,
+        string State,
+        double? Latitude,
+        double? Longitude,
+        IReadOnlyList<string> Images,
+        string? CoverImage,
+        List<string> Amenities,
+        bool Featured,
+        int AgentId,
+        string AgentName,
+        string? AgentPhoto,
+        bool IsSaved,
+        DateTime CreatedAt,
+        DateTime? UpdatedAt);
 }

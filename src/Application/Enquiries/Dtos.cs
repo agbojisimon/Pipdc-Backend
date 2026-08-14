@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace PIPDC.Application.Enquiries;
 
 public record EnquiryDto(
@@ -14,15 +16,15 @@ public record EnquiryDto(
     DateTime? UpdatedAt);
 
 public record CreateEnquiryRequest(
-    string FullName,
-    string Email,
-    string? Phone,
-    string Message,
-    int PropertyId);
+    [Required, MaxLength(200)] string FullName,
+    [Required, EmailAddress, MaxLength(256)] string Email,
+    [MaxLength(20)] string? Phone,
+    [Required, MaxLength(4000)] string Message,
+    [Range(1, int.MaxValue)] int PropertyId);
 
 public record UpdateEnquiryRequest(
-    string FullName,
-    string Email,
-    string? Phone,
-    string Message,
-    string Status);
+    [Required, MaxLength(200)] string FullName,
+    [Required, EmailAddress, MaxLength(256)] string Email,
+    [MaxLength(20)] string? Phone,
+    [Required, MaxLength(4000)] string Message,
+    [Required] string Status);

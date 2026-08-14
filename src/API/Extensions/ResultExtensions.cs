@@ -17,6 +17,7 @@ public static class ResultExtensions
             ErrorType.Validation => new BadRequestObjectResult(result.Error),
             ErrorType.Conflict => new ConflictObjectResult(result.Error),
             ErrorType.Unauthorized => new UnauthorizedObjectResult(result.Error),
+            ErrorType.Forbidden => new ObjectResult(result.Error) { StatusCode = StatusCodes.Status403Forbidden },
             _ => new ObjectResult(result.Error) { StatusCode = StatusCodes.Status500InternalServerError }
         };
     }
@@ -32,6 +33,7 @@ public static class ResultExtensions
             ErrorType.Validation => new BadRequestObjectResult(result.Error),
             ErrorType.Conflict => new ConflictObjectResult(result.Error),
             ErrorType.Unauthorized => new UnauthorizedObjectResult(result.Error),
+            ErrorType.Forbidden => new ObjectResult(result.Error) { StatusCode = StatusCodes.Status403Forbidden },
             _ => new ObjectResult(result.Error) { StatusCode = StatusCodes.Status500InternalServerError }
         };
     }
