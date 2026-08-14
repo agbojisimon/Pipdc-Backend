@@ -14,7 +14,12 @@ public static class EnquiryMappers
             enquiry.Status.ToString(),
             enquiry.PropertyId,
             enquiry.Property.Title,
+            enquiry.Property.Slug,
             enquiry.UserId,
+            enquiry.Property.AgentId,
+            enquiry.Property.Agent?.User.FullName ?? string.Empty,
+            enquiry.AgentReadAt,
+            enquiry.AgentReadAt is not null,
             enquiry.CreatedAt,
             enquiry.UpdatedAt);
 }

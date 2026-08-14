@@ -309,9 +309,9 @@ public static class DevelopmentSeeder
             new EnquirySeed("Patience Okon", "patience.okon@example.com", "+234 805 000 3344",
                 "Is the Rayfield apartment available for a 2-year lease?", 4, EnquiryStatus.Pending, 25),
             new EnquirySeed("Yusuf Adamu", "yusuf.adamu@example.com", "+234 802 000 5566",
-                "Please share documentation for the Bukuru land parcel.", 3, EnquiryStatus.Responded, 26),
+                "Please share documentation for the Bukuru land parcel.", 3, EnquiryStatus.InProgress, 26),
             new EnquirySeed("Hassana Idris", "hassana.idris@example.com", "+234 807 000 7788",
-                "Looking for a 3-bedroom apartment under N40M in Jos North.", 8, EnquiryStatus.Closed, 28),
+                "Looking for a 3-bedroom apartment under N40M in Jos North.", 8, EnquiryStatus.Resolved, 28),
         };
 
         foreach (var seed in enquirySeed)

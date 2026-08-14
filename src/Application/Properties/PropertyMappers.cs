@@ -4,7 +4,7 @@ namespace PIPDC.Application.Properties;
 
 public static class PropertyMappers
 {
-    public static PropertyDto ToDto(this Property property, bool isSaved = false)
+    public static PropertyDto ToDto(this Property property, bool isSaved = false, int enquiryCount = 0)
     {
         var images = property.PropertyImages
             .OrderBy(i => i.DisplayOrder)
@@ -49,6 +49,7 @@ public static class PropertyMappers
             property.Agent?.User.FullName ?? string.Empty,
             property.Agent?.PhotoUrl,
             isSaved,
+            enquiryCount,
             property.CreatedAt,
             property.UpdatedAt);
     }

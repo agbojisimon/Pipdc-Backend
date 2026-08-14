@@ -34,6 +34,7 @@ public record PropertyDto(
     string AgentName,
     string? AgentPhoto,
     bool IsSaved,
+    int EnquiryCount,
     DateTime CreatedAt,
     DateTime? UpdatedAt);
 
