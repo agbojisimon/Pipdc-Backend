@@ -92,7 +92,9 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             return Result<PropertyDto>.Failure(
                 Error.NotFound("property.notfound", $"Property with id {id} was not found."));
 
-        return Result<PropertyDto>.Success(property.ToDto(await IsSavedAsync(id, currentUserId, ct)));
+        var isSaved = await IsSavedAsync(id, currentUserId, ct);
+        var enquiryCount = await dbContext.Enquiries.CountAsync(e => e.PropertyId == id, ct);
+        return Result<PropertyDto>.Success(property.ToDto(isSaved, enquiryCount));
     }
 
     public async Task<Result<PropertyDto>> GetBySlugAsync(string slug, string? currentUserId, CancellationToken ct)
@@ -107,7 +109,9 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             return Result<PropertyDto>.Failure(
                 Error.NotFound("property.notfound", $"Property with slug '{slug}' was not found."));
 
-        return Result<PropertyDto>.Success(property.ToDto(await IsSavedAsync(property.Id, currentUserId, ct)));
+        var isSaved = await IsSavedAsync(property.Id, currentUserId, ct);
+        var enquiryCount = await dbContext.Enquiries.CountAsync(e => e.PropertyId == property.Id, ct);
+        return Result<PropertyDto>.Success(property.ToDto(isSaved, enquiryCount));
     }
 
     public async Task<Result<IReadOnlyList<PropertyDto>>> GetFeaturedAsync(string? currentUserId, CancellationToken ct)
@@ -258,7 +262,8 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
         await dbContext.SaveChangesAsync(ct);
 
         var updated = await LoadPropertyAsync(id, ct);
-        return Result<PropertyDto>.Success(updated!.ToDto());
+        var enquiryCount = await dbContext.Enquiries.CountAsync(e => e.PropertyId == id, ct);
+        return Result<PropertyDto>.Success(updated!.ToDto(enquiryCount: enquiryCount));
     }
 
     public async Task<Result<PropertyDto>> SetFeaturedAsync(int id, bool featured, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
@@ -278,7 +283,8 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
         await dbContext.SaveChangesAsync(ct);
 
         var updated = await LoadPropertyAsync(id, ct);
-        return Result<PropertyDto>.Success(updated!.ToDto());
+        var enquiryCount = await dbContext.Enquiries.CountAsync(e => e.PropertyId == id, ct);
+        return Result<PropertyDto>.Success(updated!.ToDto(enquiryCount: enquiryCount));
     }
 
     public async Task<Result> DeleteAsync(int id, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
@@ -390,6 +396,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             p.Agent.User.FullName,
             p.Agent.PhotoUrl,
             currentUserId == null ? false : p.SavedByUsers.Any(s => s.UserId == currentUserId),
+            p.Enquiries.Count(),
             p.CreatedAt,
             p.UpdatedAt));
 
@@ -426,6 +433,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             p.AgentName,
             p.AgentPhoto,
             p.IsSaved,
+            p.EnquiryCount,
             p.CreatedAt,
             p.UpdatedAt);
 
@@ -604,6 +612,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
         string AgentName,
         string? AgentPhoto,
         bool IsSaved,
+        int EnquiryCount,
         DateTime CreatedAt,
         DateTime? UpdatedAt);
 }

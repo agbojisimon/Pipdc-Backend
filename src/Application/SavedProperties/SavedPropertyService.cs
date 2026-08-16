@@ -31,7 +31,15 @@ public class SavedPropertyService(IAppDbContext dbContext) : ISavedPropertyServi
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync(ct);
 
-        var dtos = items.Select(p => p.ToDto(isSaved: true)).ToList();
+        var enquiryCounts = await dbContext.Enquiries
+            .Where(e => propertyIds.Contains(e.PropertyId))
+            .GroupBy(e => e.PropertyId)
+            .Select(g => new { PropertyId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.PropertyId, x => x.Count, ct);
+
+        var dtos = items
+            .Select(p => p.ToDto(isSaved: true, enquiryCount: enquiryCounts.GetValueOrDefault(p.Id)))
+            .ToList();
 
         return Result<PaginatedResult<PropertyDto>>.Success(
             PaginatedResult<PropertyDto>.Create(dtos, totalCount, q.PageNumber, q.PageSize));

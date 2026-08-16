@@ -11,18 +11,15 @@ namespace PIPDC.API.Controllers;
 [Route("api/enquiries")]
 public class EnquiriesController(IEnquiryService enquiryService) : ControllerBase
 {
+    private string CurrentUserId => User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
+
     private IList<string> CurrentUserRoles => User.FindAll("role").Select(c => c.Value).ToList();
 
-    [AllowAnonymous]
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateEnquiryRequest request, CancellationToken ct)
     {
-        string? userId = null;
-
-        if (User.Identity?.IsAuthenticated == true)
-            userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
-
-        var result = await enquiryService.CreateAsync(request, userId, ct);
+        var result = await enquiryService.CreateAsync(request, CurrentUserId, ct);
 
         if (result.IsFailure)
             return result.ToActionResult();
@@ -72,6 +69,30 @@ public class EnquiriesController(IEnquiryService enquiryService) : ControllerBas
     {
         var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
         var result = await enquiryService.DeleteAsync(id, userId, CurrentUserRoles, ct);
+        return result.ToActionResult();
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("agents/summary")]
+    public async Task<IActionResult> GetAgentSummaries([FromQuery] EnquiryQueryParameters queryParams, CancellationToken ct)
+    {
+        var result = await enquiryService.GetAgentSummariesAsync(queryParams, ct);
+        return result.ToActionResult();
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("agents/{agentId:int}")]
+    public async Task<IActionResult> GetByAgent(int agentId, [FromQuery] EnquiryQueryParameters queryParams, CancellationToken ct)
+    {
+        var result = await enquiryService.GetByAgentAsync(agentId, queryParams, ct);
+        return result.ToActionResult();
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{id:int}/notify-agent")]
+    public async Task<IActionResult> NotifyAgent(int id, CancellationToken ct)
+    {
+        var result = await enquiryService.NotifyAgentAsync(id, ct);
         return result.ToActionResult();
     }
 }
