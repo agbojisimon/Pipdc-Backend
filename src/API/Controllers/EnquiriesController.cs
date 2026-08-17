@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.JsonWebTokens;
 using PIPDC.API.Extensions;
+using PIPDC.Application.Auth;
 using PIPDC.Application.Enquiries;
 
 namespace PIPDC.API.Controllers;
@@ -42,6 +43,30 @@ public class EnquiriesController(IEnquiryService enquiryService) : ControllerBas
     {
         var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
         var result = await enquiryService.GetMineAsync(userId, queryParams, ct);
+        return result.ToActionResult();
+    }
+
+    [Authorize(Roles = Roles.Admin)]
+    [HttpGet("agents/summary")]
+    public async Task<IActionResult> GetAgentSummaries([FromQuery] EnquiryQueryParameters queryParams, CancellationToken ct)
+    {
+        var result = await enquiryService.GetAgentSummariesAsync(queryParams, ct);
+        return result.ToActionResult();
+    }
+
+    [Authorize(Roles = Roles.Admin)]
+    [HttpGet("agents/{agentId:int}")]
+    public async Task<IActionResult> GetByAgent(int agentId, [FromQuery] EnquiryQueryParameters queryParams, CancellationToken ct)
+    {
+        var result = await enquiryService.GetByAgentAsync(agentId, queryParams, ct);
+        return result.ToActionResult();
+    }
+
+    [Authorize(Roles = Roles.Admin)]
+    [HttpPost("{id:int}/notify-agent")]
+    public async Task<IActionResult> NotifyAgent(int id, CancellationToken ct)
+    {
+        var result = await enquiryService.NotifyAgentAsync(id, ct);
         return result.ToActionResult();
     }
 

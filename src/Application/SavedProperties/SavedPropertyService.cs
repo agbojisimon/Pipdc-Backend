@@ -31,14 +31,14 @@ public class SavedPropertyService(IAppDbContext dbContext) : ISavedPropertyServi
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync(ct);
 
-        var enquiryCounts = await dbContext.Enquiries
+        var counts = await dbContext.Enquiries
             .Where(e => propertyIds.Contains(e.PropertyId))
             .GroupBy(e => e.PropertyId)
-            .Select(g => new { PropertyId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.PropertyId, x => x.Count, ct);
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
 
         var dtos = items
-            .Select(p => p.ToDto(isSaved: true, enquiryCount: enquiryCounts.GetValueOrDefault(p.Id)))
+            .Select(p => p.ToDto(isSaved: true, enquiryCount: counts.GetValueOrDefault(p.Id)))
             .ToList();
 
         return Result<PaginatedResult<PropertyDto>>.Success(

@@ -92,9 +92,8 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             return Result<PropertyDto>.Failure(
                 Error.NotFound("property.notfound", $"Property with id {id} was not found."));
 
-        var isSaved = await IsSavedAsync(id, currentUserId, ct);
-        var enquiryCount = await dbContext.Enquiries.CountAsync(e => e.PropertyId == id, ct);
-        return Result<PropertyDto>.Success(property.ToDto(isSaved, enquiryCount));
+        return Result<PropertyDto>.Success(property.ToDto(
+            await IsSavedAsync(id, currentUserId, ct), await EnquiryCountAsync(id, ct)));
     }
 
     public async Task<Result<PropertyDto>> GetBySlugAsync(string slug, string? currentUserId, CancellationToken ct)
@@ -109,9 +108,8 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             return Result<PropertyDto>.Failure(
                 Error.NotFound("property.notfound", $"Property with slug '{slug}' was not found."));
 
-        var isSaved = await IsSavedAsync(property.Id, currentUserId, ct);
-        var enquiryCount = await dbContext.Enquiries.CountAsync(e => e.PropertyId == property.Id, ct);
-        return Result<PropertyDto>.Success(property.ToDto(isSaved, enquiryCount));
+        return Result<PropertyDto>.Success(property.ToDto(
+            await IsSavedAsync(property.Id, currentUserId, ct), await EnquiryCountAsync(property.Id, ct)));
     }
 
     public async Task<Result<IReadOnlyList<PropertyDto>>> GetFeaturedAsync(string? currentUserId, CancellationToken ct)
@@ -197,7 +195,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
         await dbContext.SaveChangesAsync(ct);
 
         var created = await LoadPropertyAsync(property.Id, ct);
-        return Result<PropertyDto>.Success(created!.ToDto());
+        return Result<PropertyDto>.Success(created!.ToDto(enquiryCount: 0));
     }
 
     public async Task<Result<PropertyDto>> UpdateAsync(int id, UpdatePropertyRequest request, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
@@ -262,8 +260,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
         await dbContext.SaveChangesAsync(ct);
 
         var updated = await LoadPropertyAsync(id, ct);
-        var enquiryCount = await dbContext.Enquiries.CountAsync(e => e.PropertyId == id, ct);
-        return Result<PropertyDto>.Success(updated!.ToDto(enquiryCount: enquiryCount));
+        return Result<PropertyDto>.Success(updated!.ToDto(enquiryCount: await EnquiryCountAsync(id, ct)));
     }
 
     public async Task<Result<PropertyDto>> SetFeaturedAsync(int id, bool featured, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
@@ -283,8 +280,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
         await dbContext.SaveChangesAsync(ct);
 
         var updated = await LoadPropertyAsync(id, ct);
-        var enquiryCount = await dbContext.Enquiries.CountAsync(e => e.PropertyId == id, ct);
-        return Result<PropertyDto>.Success(updated!.ToDto(enquiryCount: enquiryCount));
+        return Result<PropertyDto>.Success(updated!.ToDto(enquiryCount: await EnquiryCountAsync(id, ct)));
     }
 
     public async Task<Result> DeleteAsync(int id, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
@@ -451,6 +447,9 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
 
         return await dbContext.SavedProperties.AnyAsync(s => s.PropertyId == propertyId && s.UserId == currentUserId, ct);
     }
+
+    private Task<int> EnquiryCountAsync(int propertyId, CancellationToken ct) =>
+        dbContext.Enquiries.CountAsync(e => e.PropertyId == propertyId, ct);
 
     private async Task<Result<int>> ResolveAgentIdAsync(int? requestedAgentId, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
     {
