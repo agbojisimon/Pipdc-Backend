@@ -53,6 +53,26 @@ public static class DependencyInjection
                     NameClaimType = "name",
                     RoleClaimType = "role"
                 };
+
+                options.Events = new JwtBearerEvents
+                {
+                    // SignalR clients (browsers/WebSocket) send the JWT as an
+                    // "access_token" query parameter during negotiation. Extract
+                    // it only for the SignalR hub path. REST endpoints continue
+                    // to use the Authorization header, and the token validation
+                    // rules above are unchanged.
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        if (!string.IsNullOrEmpty(accessToken) &&
+                            context.HttpContext.Request.Path.StartsWithSegments("/hubs/messaging"))
+                        {
+                            context.Token = accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
         var allowedOrigins = config.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];

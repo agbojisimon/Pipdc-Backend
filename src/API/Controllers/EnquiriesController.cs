@@ -97,27 +97,4 @@ public class EnquiriesController(IEnquiryService enquiryService) : ControllerBas
         return result.ToActionResult();
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpGet("agents/summary")]
-    public async Task<IActionResult> GetAgentSummaries([FromQuery] EnquiryQueryParameters queryParams, CancellationToken ct)
-    {
-        var result = await enquiryService.GetAgentSummariesAsync(queryParams, ct);
-        return result.ToActionResult();
-    }
-
-    [Authorize(Roles = "Admin")]
-    [HttpGet("agents/{agentId:int}")]
-    public async Task<IActionResult> GetByAgent(int agentId, [FromQuery] EnquiryQueryParameters queryParams, CancellationToken ct)
-    {
-        var result = await enquiryService.GetByAgentAsync(agentId, queryParams, ct);
-        return result.ToActionResult();
-    }
-
-    [Authorize(Roles = "Admin")]
-    [HttpPost("{id:int}/notify-agent")]
-    public async Task<IActionResult> NotifyAgent(int id, CancellationToken ct)
-    {
-        var result = await enquiryService.NotifyAgentAsync(id, ct);
-        return result.ToActionResult();
-    }
 }

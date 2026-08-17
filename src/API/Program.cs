@@ -1,10 +1,12 @@
 using PIPDC.API.Extensions;
+using PIPDC.API.Hubs;
 using PIPDC.Application;
 using PIPDC.Infrastructure.Data;
 using PIPDC.Infrastructure;
 using PIPDC.Domain.Common;
 using PIPDC.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
@@ -13,6 +15,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, JwtSubUserIdProvider>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
@@ -68,5 +72,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<MessagingHub>("/hubs/messaging");
 
 app.Run();

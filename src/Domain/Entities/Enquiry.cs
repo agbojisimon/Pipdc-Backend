@@ -19,4 +19,5 @@ public class Enquiry : AuditableEntity
 
     public Property Property { get; set; } = null!;
     public AppUser? User { get; set; }
+    public Conversation? Conversation { get; set; }
 }

@@ -15,4 +15,5 @@ public class Agent : AuditableEntity
 
     public AppUser User { get; set; } = null!;
     public ICollection<Property> Properties { get; set; } = [];
+    public ICollection<Conversation> Conversations { get; set; } = [];
 }

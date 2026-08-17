@@ -13,4 +13,6 @@ public class AppUser : IdentityUser
     public ICollection<SavedProperty> SavedProperties { get; set; } = [];
     public ICollection<AiChatSession> AiChatSessions { get; set; } = [];
     public ICollection<Enquiry> Enquiries { get; set; } = [];
+    public ICollection<Conversation> Conversations { get; set; } = [];
+    public ICollection<Message> Messages { get; set; } = [];
 }

@@ -13,6 +13,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<PropertyImage> PropertyImages => Set<PropertyImage>();
     public DbSet<Agent> Agents => Set<Agent>();
     public DbSet<Enquiry> Enquiries => Set<Enquiry>();
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<Message> Messages => Set<Message>();
     public DbSet<SaleRecord> SaleRecords => Set<SaleRecord>();
     public DbSet<LeaseRecord> LeaseRecords => Set<LeaseRecord>();
     public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
