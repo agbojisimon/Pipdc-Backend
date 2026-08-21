@@ -7,9 +7,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using PIPDC.Application.Auth;
 using PIPDC.Application.Data;
+using PIPDC.Application.Email;
 using PIPDC.Infrastructure.Auth;
 using PIPDC.Domain.Entities;
 using PIPDC.Infrastructure.Data;
+using PIPDC.Infrastructure.Email;
 
 namespace PIPDC.Infrastructure;
 
@@ -105,6 +107,9 @@ public static class DependencyInjection
 
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
+
+        services.Configure<GmailApiSettings>(config.GetSection("GmailApiSettings"));
+        services.AddScoped<IEmailService, GmailApiEmailService>();
 
         return services;
     }

@@ -1,15 +1,23 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using PIPDC.Application.Auth;
 using PIPDC.Application.Common;
 using PIPDC.Application.Data;
+using PIPDC.Application.Email;
 using PIPDC.Domain.Common;
 using PIPDC.Domain.Entities;
 using PIPDC.Domain.Enums;
 
 namespace PIPDC.Application.Enquiries;
 
-public class EnquiryService(IAppDbContext dbContext, UserManager<AppUser> userManager) : IEnquiryService
+public class EnquiryService(
+    IAppDbContext dbContext,
+    UserManager<AppUser> userManager,
+    IEmailService emailService,
+    IOptions<GmailApiSettings> smtpOptions,
+    ILogger<EnquiryService> logger) : IEnquiryService
 {
     public async Task<Result<PaginatedResult<EnquiryDto>>> GetAllAsync(EnquiryQueryParameters q, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
     {
@@ -114,6 +122,29 @@ public class EnquiryService(IAppDbContext dbContext, UserManager<AppUser> userMa
                 .ThenInclude(a => a.User)
             .FirstAsync(e => e.Id == enquiry.Id, ct);
 
+        // Email the assigned agent about the new enquiry (best-effort).
+        if (created.Property.Agent?.User?.Email is { Length: > 0 } agentEmail)
+        {
+            try
+            {
+                var baseUrl = smtpOptions.Value.FrontendBaseUrl;
+                await emailService.SendAsync(
+                    EmailTemplates.NewEnquiryToAgent(
+                        agentEmail,
+                        created.Property.Agent.User.FullName,
+                        created.FullName,
+                        created.Message,
+                        created.Property.Title,
+                        created.Id,
+                        baseUrl),
+                    ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex, "Failed to send new-enquiry email for enquiry {EnquiryId}.", created.Id);
+            }
+        }
+
         return Result<EnquiryDto>.Success(created.ToDto());
     }
 
@@ -123,6 +154,7 @@ public class EnquiryService(IAppDbContext dbContext, UserManager<AppUser> userMa
             .Include(e => e.Property)
                 .ThenInclude(p => p.Agent)
                 .ThenInclude(a => a.User)
+            .Include(e => e.User)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
 
         if (enquiry is null)
@@ -145,6 +177,9 @@ public class EnquiryService(IAppDbContext dbContext, UserManager<AppUser> userMa
         enquiry.UpdatedAt = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(ct);
+
+        // Send status-change emails (best-effort, never fail the operation).
+        await SendStatusChangeEmailsAsync(enquiry, status, ct);
 
         return Result<EnquiryDto>.Success(enquiry.ToDto());
     }
@@ -248,6 +283,28 @@ public class EnquiryService(IAppDbContext dbContext, UserManager<AppUser> userMa
             return Result<AgentNotifyResultDto>.Failure(
                 Error.NotFound("enquiry.notfound", $"Enquiry with id {id} was not found."));
 
+        // Email the agent a reminder (best-effort).
+        if (enquiry.Property.Agent?.User?.Email is { Length: > 0 } agentEmail)
+        {
+            try
+            {
+                var baseUrl = smtpOptions.Value.FrontendBaseUrl;
+                await emailService.SendAsync(
+                    EmailTemplates.AdminNotifyToAgent(
+                        agentEmail,
+                        enquiry.Property.Agent.User.FullName,
+                        enquiry.FullName,
+                        enquiry.Property.Title,
+                        enquiry.Id,
+                        baseUrl),
+                    ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex, "Failed to send admin-notify email for enquiry {EnquiryId}.", enquiry.Id);
+            }
+        }
+
         return Result<AgentNotifyResultDto>.Success(new AgentNotifyResultDto(
             enquiry.Id,
             enquiry.Status.ToString(),
@@ -256,8 +313,8 @@ public class EnquiryService(IAppDbContext dbContext, UserManager<AppUser> userMa
             enquiry.Phone,
             enquiry.Message,
             enquiry.Property.AgentId,
-            enquiry.Property.Agent.User.FullName,
-            enquiry.Property.Agent.User.Email ?? string.Empty,
+            enquiry.Property.Agent?.User?.FullName ?? string.Empty,
+            enquiry.Property.Agent?.User?.Email ?? string.Empty,
             enquiry.PropertyId,
             enquiry.Property.Title,
             enquiry.Property.Slug,
@@ -323,5 +380,42 @@ public class EnquiryService(IAppDbContext dbContext, UserManager<AppUser> userMa
             ? Result.Success()
             : Result.Failure(
                 Error.Forbidden("enquiry.forbidden", "You cannot manage an enquiry for a property you do not own."));
+    }
+
+    private async Task SendStatusChangeEmailsAsync(Enquiry enquiry, EnquiryStatus newStatus, CancellationToken ct)
+    {
+        var baseUrl = smtpOptions.Value.FrontendBaseUrl;
+        var clientEmail = enquiry.User?.Email ?? enquiry.Email;
+        var clientName = enquiry.FullName;
+        var agentEmail = enquiry.Property.Agent?.User?.Email;
+        var agentName = enquiry.Property.Agent?.User?.FullName ?? string.Empty;
+        var propertyTitle = enquiry.Property.Title;
+
+        try
+        {
+            if (newStatus == EnquiryStatus.ViewingScheduled)
+            {
+                // Email client
+                if (!string.IsNullOrWhiteSpace(clientEmail))
+                    await emailService.SendAsync(
+                        EmailTemplates.ViewingScheduledToClient(clientEmail, clientName, propertyTitle, enquiry.Id, baseUrl), ct);
+
+                // Email agent
+                if (!string.IsNullOrWhiteSpace(agentEmail))
+                    await emailService.SendAsync(
+                        EmailTemplates.ViewingScheduledToAgent(agentEmail, agentName, clientName, propertyTitle, enquiry.Id, baseUrl), ct);
+            }
+            else if (newStatus == EnquiryStatus.Resolved)
+            {
+                // Email client
+                if (!string.IsNullOrWhiteSpace(clientEmail))
+                    await emailService.SendAsync(
+                        EmailTemplates.EnquiryResolvedToClient(clientEmail, clientName, propertyTitle, enquiry.Id, baseUrl), ct);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Failed to send status-change email for enquiry {EnquiryId} (status: {Status}).", enquiry.Id, newStatus);
+        }
     }
 }

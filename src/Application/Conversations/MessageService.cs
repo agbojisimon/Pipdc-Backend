@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using PIPDC.API.Hubs;
 using PIPDC.Application.Data;
+using PIPDC.Application.Email;
 using PIPDC.Domain.Common;
 using PIPDC.Domain.Entities;
 
@@ -11,6 +13,8 @@ namespace PIPDC.Application.Conversations;
 public class MessageService(
     IAppDbContext dbContext,
     IHubContext<MessagingHub> hubContext,
+    IEmailService emailService,
+    IOptions<GmailApiSettings> smtpOptions,
     ILogger<MessageService> logger) : IMessageService
 {
     public async Task<Result<MessageDto>> SendAsync(int conversationId, SendMessageRequest request, string currentUserId, CancellationToken ct)
@@ -53,6 +57,9 @@ public class MessageService(
         // Database persistence succeeded — now publish to the conversation group.
         var dto = created.ToDto();
         await PublishNewMessageAsync(conversationId, dto, ct);
+
+        // Send email notification to the other party (best-effort).
+        await SendReplyEmailAsync(conversation, currentUserId, request.Content.Trim(), ct);
 
         return Result<MessageDto>.Success(dto);
     }
@@ -182,6 +189,9 @@ public class MessageService(
         // re-save) — now publish to the winning conversation group exactly once.
         await PublishNewMessageAsync(conversation.Id, messageDto, ct);
 
+        // Send email notification to the other party (best-effort).
+        await SendReplyEmailAsync(conversation, currentUserId, content, ct);
+
         return Result<FirstMessageResultDto>.Success(
             new FirstMessageResultDto(conversationDto, messageDto));
     }
@@ -203,6 +213,71 @@ public class MessageService(
             logger.LogWarning(ex,
                 "SignalR NewMessage broadcast failed for conversation {ConversationId}; the message was already persisted.",
                 conversationId);
+        }
+    }
+
+    private async Task SendReplyEmailAsync(Conversation conversation, string senderUserId, string messageContent, CancellationToken ct)
+    {
+        try
+        {
+            var enquiry = await dbContext.Enquiries
+                .Include(e => e.Property)
+                    .ThenInclude(p => p.Agent)
+                    .ThenInclude(a => a.User)
+                .FirstOrDefaultAsync(e => e.Id == conversation.EnquiryId, ct);
+
+            if (enquiry?.Property.Agent?.User is null)
+                return;
+
+            var baseUrl = smtpOptions.Value.FrontendBaseUrl;
+            var propertyTitle = enquiry.Property.Title;
+            var enquiryId = enquiry.Id;
+            var preview = messageContent.Length > 120 ? messageContent[..120] + "…" : messageContent;
+
+            bool senderIsClient = senderUserId == conversation.ClientUserId;
+
+            if (senderIsClient)
+            {
+                // Client sent → email agent
+                var agentEmail = enquiry.Property.Agent.User.Email;
+                if (string.IsNullOrWhiteSpace(agentEmail))
+                    return;
+
+                await emailService.SendAsync(
+                    EmailTemplates.ClientReplyToAgent(
+                        agentEmail,
+                        enquiry.Property.Agent.User.FullName,
+                        enquiry.FullName,
+                        preview,
+                        propertyTitle,
+                        enquiryId,
+                        baseUrl),
+                    ct);
+            }
+            else
+            {
+                // Agent sent → email client
+                var clientEmail = enquiry.User?.Email ?? enquiry.Email;
+                if (string.IsNullOrWhiteSpace(clientEmail))
+                    return;
+
+                await emailService.SendAsync(
+                    EmailTemplates.AgentReplyToClient(
+                        clientEmail,
+                        enquiry.FullName,
+                        enquiry.Property.Agent.User.FullName,
+                        preview,
+                        propertyTitle,
+                        enquiryId,
+                        baseUrl),
+                    ct);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex,
+                "Failed to send reply email for conversation {ConversationId}.",
+                conversation.Id);
         }
     }
 
