@@ -21,6 +21,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<SavedProperty> SavedProperties => Set<SavedProperty>();
     public DbSet<AiChatSession> AiChatSessions => Set<AiChatSession>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<DevelopmentProject> DevelopmentProjects => Set<DevelopmentProject>();
+    public DbSet<DevelopmentUnit> DevelopmentUnits => Set<DevelopmentUnit>();
+    public DbSet<DevelopmentUpdate> DevelopmentUpdates => Set<DevelopmentUpdate>();
+    public DbSet<DevelopmentProjectImage> DevelopmentProjectImages => Set<DevelopmentProjectImage>();
+    public DbSet<DevelopmentTracking> DevelopmentTrackings => Set<DevelopmentTracking>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

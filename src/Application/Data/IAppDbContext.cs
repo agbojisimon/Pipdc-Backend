@@ -18,6 +18,11 @@ public interface IAppDbContext
     DbSet<SavedProperty> SavedProperties { get; }
     DbSet<AiChatSession> AiChatSessions { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
+    DbSet<DevelopmentProject> DevelopmentProjects { get; }
+    DbSet<DevelopmentUnit> DevelopmentUnits { get; }
+    DbSet<DevelopmentUpdate> DevelopmentUpdates { get; }
+    DbSet<DevelopmentProjectImage> DevelopmentProjectImages { get; }
+    DbSet<DevelopmentTracking> DevelopmentTrackings { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

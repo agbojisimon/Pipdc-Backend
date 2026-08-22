@@ -54,13 +54,13 @@ public static class DevelopmentSeeder
             new AgentSeed("Grace", "Ibrahim", "grace.ibrahim@pipdc.gov.ng", "Commercial Property Specialist", "+234 805 555 0178",
                 "Grace advises businesses and institutions on commercial leasing and acquisition across Plateau State, with a focus on retail, office and mixed-use developments.",
                 "https://images.pexels.com/photos/3760263/pexels-photo-3760263.jpeg?auto=compress&cs=tinysrgb&w=800"),
-            new AgentSeed("Daniel", "Dachung", "daniel.dachung@pipdc.gov.ng", "Land & Investment Advisor", "+234 802 555 0193",
+            new AgentSeed("Daniel", "Dachung", "agbojimentor@gmail.com", "Land & Investment Advisor", "+234 802 555 0193",
                 "Daniel is PIPDC's lead land advisor, helping investors identify titled plots and agricultural holdings with clear documentation across the Plateau.",
                 "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=800"),
             new AgentSeed("Aisha", "Mohammed", "aisha.mohammed@pipdc.gov.ng", "Leasing & Rental Consultant", "+234 807 555 0124",
                 "Aisha manages the leasing desk, connecting tenants with quality apartments and family homes across Jos metropolis and surrounding districts.",
                 "https://images.pexels.com/photos/3727464/pexels-photo-3727464.jpeg?auto=compress&cs=tinysrgb&w=800"),
-            new AgentSeed("Stephen", "Pam", "stephen.pam@pipdc.gov.ng", "Luxury Estates Manager", "+234 809 555 0166",
+            new AgentSeed("Stephen", "Pam", "liderintegratedservices@gmail.com", "Luxury Estates Manager", "+234 809 555 0166",
                 "Stephen curates PIPDC's luxury portfolio, representing the finest estates and penthouses in Rayfield, Lamingo and the Jos Plateau highlands.",
                 "https://images.pexels.com/photos/3785067/pexels-photo-3785067.jpeg?auto=compress&cs=tinysrgb&w=800"),
             new AgentSeed("Maryam", "Audu", "maryam.audu@pipdc.gov.ng", "First-Time Buyer Advisor", "+234 806 555 0188",
@@ -71,7 +71,53 @@ public static class DevelopmentSeeder
         var agents = new List<Agent>();
         foreach (var seed in agentSeed)
         {
-            var user = await EnsureUserAsync(userManager, seedPassword, seed.First, seed.Last, seed.Email, Roles.Agent);
+            AppUser? user;
+
+            // Find ALL users with this name — there may be duplicates from prior runs.
+            var allByName = await userManager.Users
+                .Where(u => u.FirstName == seed.First && u.LastName == seed.Last)
+                .ToListAsync();
+
+            if (allByName.Count > 0)
+            {
+                // Prefer the user that already has an Agent record; fall back to oldest.
+                AppUser? preferred = null;
+                foreach (var u in allByName)
+                {
+                    if (await dbContext.Agents.AnyAsync(a => a.UserId == u.Id))
+                    {
+                        preferred = u;
+                        break;
+                    }
+                }
+                preferred ??= allByName.OrderBy(u => u.CreatedAt).First();
+
+                // Delete every other duplicate that has no agent record.
+                foreach (var u in allByName.Where(u => u.Id != preferred.Id))
+                {
+                    if (!await dbContext.Agents.AnyAsync(a => a.UserId == u.Id))
+                        await userManager.DeleteAsync(u);
+                }
+
+                // Ensure email is correct.
+                if (preferred.Email != seed.Email)
+                {
+                    preferred.Email = seed.Email;
+                    preferred.UserName = seed.Email;
+                    preferred.NormalizedEmail = seed.Email.ToUpperInvariant();
+                    preferred.NormalizedUserName = seed.Email.ToUpperInvariant();
+                    await userManager.UpdateAsync(preferred);
+                }
+
+                user = preferred;
+
+                if (!await userManager.IsInRoleAsync(user, Roles.Agent))
+                    await userManager.AddToRoleAsync(user, Roles.Agent);
+            }
+            else
+            {
+                user = await EnsureUserAsync(userManager, seedPassword, seed.First, seed.Last, seed.Email, Roles.Agent);
+            }
 
             var agent = await dbContext.Agents.FirstOrDefaultAsync(a => a.UserId == user.Id);
             if (agent is null)
@@ -329,6 +375,106 @@ public static class DevelopmentSeeder
                 Status = seed.Status,
                 CreatedAt = now.AddDays(-seed.DaysAgo)
             });
+        }
+
+        await dbContext.SaveChangesAsync();
+
+        // ---------------------------------------------------------------
+        // Development projects
+        // ---------------------------------------------------------------
+        if (!await dbContext.DevelopmentProjects.AnyAsync())
+        {
+            var devProject1 = new DevelopmentProject
+            {
+                Name = "Rayfield Heights Estate",
+                Slug = "rayfield-heights-estate",
+                Description = "A premium gated estate featuring 48 luxury homes with panoramic plateau views, 24/7 security, and shared amenities including a clubhouse, swimming pool and tennis court.",
+                Location = "Rayfield, Jos, Plateau State",
+                Developer = "PIPDC Developments",
+                Status = DevelopmentProjectStatus.UnderConstruction,
+                ExpectedCompletionDate = now.AddMonths(18),
+                ProgressPercentage = 45,
+                Featured = true,
+                CreatedAt = now.AddDays(-60)
+            };
+            dbContext.DevelopmentProjects.Add(devProject1);
+            await dbContext.SaveChangesAsync();
+
+            dbContext.DevelopmentUnits.AddRange(
+                new DevelopmentUnit { DevelopmentProjectId = devProject1.Id, UnitIdentifier = "RH-U1", UnitType = "4-Bedroom Detached Villa", Status = DevelopmentUnitStatus.Available, Price = 85_000_000m, Currency = "NGN", Description = "Spacious detached villa with private garden, double garage, and en-suite bedrooms.", CreatedAt = now.AddDays(-60) },
+                new DevelopmentUnit { DevelopmentProjectId = devProject1.Id, UnitIdentifier = "RH-U2", UnitType = "3-Bedroom Terrace Duplex", Status = DevelopmentUnitStatus.Available, Price = 55_000_000m, Currency = "NGN", Description = "Modern terrace duplex with fitted kitchen and shared green spaces.", CreatedAt = now.AddDays(-60) },
+                new DevelopmentUnit { DevelopmentProjectId = devProject1.Id, UnitIdentifier = "RH-U3", UnitType = "2-Bedroom Apartment", Status = DevelopmentUnitStatus.Available, Price = 35_000_000m, Currency = "NGN", Description = "Compact apartment ideal for young professionals, with access to estate amenities.", CreatedAt = now.AddDays(-60) }
+            );
+
+            dbContext.DevelopmentUpdates.AddRange(
+                new DevelopmentUpdate { DevelopmentProjectId = devProject1.Id, Title = "Foundation Complete", Description = "All 48 plots have had foundations laid and inspected. Structural work begins next month.", ProgressPercentage = 30, UpdateDate = now.AddDays(-45), CreatedAt = now.AddDays(-45) },
+                new DevelopmentUpdate { DevelopmentProjectId = devProject1.Id, Title = "Structural Framework Ongoing", Description = "Roofing and wall framework underway across Phase 1 units. On schedule.", ProgressPercentage = 45, UpdateDate = now.AddDays(-15), CreatedAt = now.AddDays(-15) }
+            );
+
+            dbContext.DevelopmentProjectImages.AddRange(
+                new DevelopmentProjectImage { DevelopmentProjectId = devProject1.Id, Url = "https://images.pexels.com/photos/1396122/pexels-photo-1396122.jpeg?auto=compress&cs=tinysrgb&w=1200", PublicId = "seed/rayfield-heights-estate-0", IsCover = true, DisplayOrder = 0 },
+                new DevelopmentProjectImage { DevelopmentProjectId = devProject1.Id, Url = "https://images.pexels.com/photos/1571460/pexels-photo-1571460.jpeg?auto=compress&cs=tinysrgb&w=1200", PublicId = "seed/rayfield-heights-estate-1", IsCover = false, DisplayOrder = 1 }
+            );
+
+            var devProject2 = new DevelopmentProject
+            {
+                Name = "Bukuru Gardens Phase 1",
+                Slug = "bukuru-gardens-phase-1",
+                Description = "An affordable housing development offering 60 semi-detached and terrace homes with modern finishes, located in the heart of Bukuru with easy access to schools and markets.",
+                Location = "Bukuru, Jos South, Plateau State",
+                Developer = "Plateau Housing Partnership",
+                Status = DevelopmentProjectStatus.Planned,
+                ExpectedCompletionDate = now.AddMonths(24),
+                ProgressPercentage = 10,
+                Featured = false,
+                CreatedAt = now.AddDays(-40)
+            };
+            dbContext.DevelopmentProjects.Add(devProject2);
+            await dbContext.SaveChangesAsync();
+
+            dbContext.DevelopmentUnits.AddRange(
+                new DevelopmentUnit { DevelopmentProjectId = devProject2.Id, UnitIdentifier = "BG-U1", UnitType = "3-Bedroom Semi-Detached", Status = DevelopmentUnitStatus.Available, Price = 28_000_000m, Currency = "NGN", Description = "Family-friendly semi-detached home with shared parking and garden.", CreatedAt = now.AddDays(-40) },
+                new DevelopmentUnit { DevelopmentProjectId = devProject2.Id, UnitIdentifier = "BG-U2", UnitType = "2-Bedroom Terrace", Status = DevelopmentUnitStatus.Available, Price = 22_000_000m, Currency = "NGN", Description = "Affordable terrace unit with open-plan living and fitted kitchen.", CreatedAt = now.AddDays(-40) }
+            );
+
+            dbContext.DevelopmentUpdates.AddRange(
+                new DevelopmentUpdate { DevelopmentProjectId = devProject2.Id, Title = "Project Approved", Description = "Development plans approved by Plateau State authorities. Site preparation to begin Q1 2027.", ProgressPercentage = 10, UpdateDate = now.AddDays(-30), CreatedAt = now.AddDays(-30) }
+            );
+
+            dbContext.DevelopmentProjectImages.AddRange(
+                new DevelopmentProjectImage { DevelopmentProjectId = devProject2.Id, Url = "https://images.pexels.com/photos/106399/pexels-photo-106399.jpeg?auto=compress&cs=tinysrgb&w=1200", PublicId = "seed/bukuru-gardens-phase-1-0", IsCover = true, DisplayOrder = 0 }
+            );
+
+            var devProject3 = new DevelopmentProject
+            {
+                Name = "Jos City Residences",
+                Slug = "jos-city-residences",
+                Description = "A mixed-use development in Jos city centre combining 24 residential units with ground-floor retail. Walking distance to Ahmadu Bello Way and the city business district.",
+                Location = "City Centre, Jos, Plateau State",
+                Developer = "Capital Development Partners",
+                Status = DevelopmentProjectStatus.UnderConstruction,
+                ExpectedCompletionDate = now.AddMonths(10),
+                ProgressPercentage = 70,
+                Featured = true,
+                CreatedAt = now.AddDays(-90)
+            };
+            dbContext.DevelopmentProjects.Add(devProject3);
+            await dbContext.SaveChangesAsync();
+
+            dbContext.DevelopmentUnits.AddRange(
+                new DevelopmentUnit { DevelopmentProjectId = devProject3.Id, UnitIdentifier = "JCR-RT1", UnitType = "2-Bedroom Residential Unit", Status = DevelopmentUnitStatus.Reserved, Price = 42_000_000m, Currency = "NGN", Description = "Residential unit on upper floors with city views.", CreatedAt = now.AddDays(-90) },
+                new DevelopmentUnit { DevelopmentProjectId = devProject3.Id, UnitIdentifier = "JCR-RT2", UnitType = "3-Bedroom Residential Unit", Status = DevelopmentUnitStatus.Available, Price = 60_000_000m, Currency = "NGN", Description = "Spacious family unit with balcony and city views.", CreatedAt = now.AddDays(-90) },
+                new DevelopmentUnit { DevelopmentProjectId = devProject3.Id, UnitIdentifier = "JCR-SH1", UnitType = "Retail Shop Unit", Status = DevelopmentUnitStatus.Available, Price = 15_000_000m, Currency = "NGN", Description = "Ground-floor retail space with high foot traffic.", CreatedAt = now.AddDays(-90) }
+            );
+
+            dbContext.DevelopmentUpdates.AddRange(
+                new DevelopmentUpdate { DevelopmentProjectId = devProject3.Id, Title = "Roofing Complete", Description = "Roofing and waterproofing completed across all floors. Interior finishing begins next week.", ProgressPercentage = 55, UpdateDate = now.AddDays(-30), CreatedAt = now.AddDays(-30) },
+                new DevelopmentUpdate { DevelopmentProjectId = devProject3.Id, Title = "Interior Finishing in Progress", Description = "Tiling, plumbing and electrical wiring underway. On track for completion.", ProgressPercentage = 70, UpdateDate = now.AddDays(-5), CreatedAt = now.AddDays(-5) }
+            );
+
+            dbContext.DevelopmentProjectImages.AddRange(
+                new DevelopmentProjectImage { DevelopmentProjectId = devProject3.Id, Url = "https://images.pexels.com/photos/323780/pexels-photo-323780.jpeg?auto=compress&cs=tinysrgb&w=1200", PublicId = "seed/jos-city-residences-0", IsCover = true, DisplayOrder = 0 }
+            );
         }
 
         await dbContext.SaveChangesAsync();
