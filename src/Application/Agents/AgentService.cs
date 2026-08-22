@@ -186,4 +186,61 @@ public class AgentService(IAppDbContext dbContext, UserManager<AppUser> userMana
 
         return Result.Success();
     }
+
+    public async Task<Result<AgentDto>> ToggleVerificationAsync(int agentId, CancellationToken ct)
+    {
+        var agent = await dbContext.Agents
+            .Include(a => a.User)
+            .FirstOrDefaultAsync(a => a.Id == agentId, ct);
+
+        if (agent is null)
+            return Result<AgentDto>.Failure(
+                Error.NotFound("agent.notfound", $"Agent with id {agentId} was not found."));
+
+        agent.IsVerified = !agent.IsVerified;
+        agent.UpdatedAt = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync(ct);
+
+        var propertyCount = await dbContext.Properties.CountAsync(p => p.AgentId == agentId, ct);
+
+        return Result<AgentDto>.Success(agent.ToDto(propertyCount));
+    }
+
+    public async Task<Result<AgentSummaryDto>> GetSummaryAsync(int agentId, CancellationToken ct)
+    {
+        var agent = await dbContext.Agents
+            .Include(a => a.User)
+            .FirstOrDefaultAsync(a => a.Id == agentId, ct);
+
+        if (agent is null)
+            return Result<AgentSummaryDto>.Failure(
+                Error.NotFound("agent.notfound", $"Agent with id {agentId} was not found."));
+
+        var propertyCount = await dbContext.Properties.CountAsync(p => p.AgentId == agentId, ct);
+
+        var enquiryCount = await dbContext.Enquiries
+            .CountAsync(e => e.Property.AgentId == agentId, ct);
+
+        var conversationCount = await dbContext.Conversations
+            .CountAsync(c => c.AgentId == agentId, ct);
+
+        return Result<AgentSummaryDto>.Success(new AgentSummaryDto(
+            agent.Id,
+            agent.Bio,
+            agent.Title,
+            agent.PhotoUrl,
+            agent.AgencyName,
+            agent.LicenseNumber,
+            agent.PhoneNumber,
+            agent.IsVerified,
+            agent.User.FullName,
+            agent.UserId,
+            agent.User.Email!,
+            agent.CreatedAt,
+            agent.UpdatedAt,
+            propertyCount,
+            enquiryCount,
+            conversationCount));
+    }
 }

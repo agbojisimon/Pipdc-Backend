@@ -17,4 +17,25 @@ public class UsersController(IUserService userService) : ControllerBase
         var result = await userService.GetAllAsync(queryParams, ct);
         return result.ToActionResult();
     }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(string id, CancellationToken ct)
+    {
+        var result = await userService.GetByIdAsync(id, ct);
+        return result.ToActionResult();
+    }
+
+    [HttpPost("{id}/deactivate")]
+    public async Task<IActionResult> Deactivate(string id, CancellationToken ct)
+    {
+        var result = await userService.DeactivateAsync(id, ct);
+        return result.ToActionResult();
+    }
+
+    [HttpPost("{id}/activate")]
+    public async Task<IActionResult> Activate(string id, CancellationToken ct)
+    {
+        var result = await userService.ActivateAsync(id, ct);
+        return result.ToActionResult();
+    }
 }

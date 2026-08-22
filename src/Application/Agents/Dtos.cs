@@ -40,3 +40,21 @@ public record UpdateAgentRequest(
     [MaxLength(100)] string? LicenseNumber,
     [Required, MaxLength(20)] string PhoneNumber,
     bool IsVerified);
+
+public record AgentSummaryDto(
+    int Id,
+    string? Bio,
+    string? Title,
+    string? Photo,
+    string Agency,
+    string? LicenseNumber,
+    string Phone,
+    bool Verified,
+    string FullName,
+    string UserId,
+    string Email,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt,
+    int PropertyCount,
+    int EnquiryCount,
+    int ConversationCount);
