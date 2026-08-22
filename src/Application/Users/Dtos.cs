@@ -11,6 +11,21 @@ public record UserDto(
     DateTime CreatedAt,
     int? AgentId);
 
+public record UserDetailDto(
+    string Id,
+    string FirstName,
+    string LastName,
+    string FullName,
+    string Email,
+    string? PhoneNumber,
+    DateTime CreatedAt,
+    IEnumerable<string> Roles,
+    string Status,
+    int? AgentId,
+    string? AgentLicenseNumber,
+    string? AgentAgencyName,
+    bool? AgentIsVerified);
+
 public class UserQueryParameters
 {
     public string? Keyword { get; set; }

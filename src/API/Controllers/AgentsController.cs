@@ -62,4 +62,19 @@ public class AgentsController(IAgentService agentService) : ControllerBase
         var result = await agentService.DeleteAsync(id, ct);
         return result.ToActionResult();
     }
+
+    [Authorize(Roles = Roles.Admin)]
+    [HttpPut("{id:int}/verify")]
+    public async Task<IActionResult> ToggleVerification(int id, CancellationToken ct)
+    {
+        var result = await agentService.ToggleVerificationAsync(id, ct);
+        return result.ToActionResult();
+    }
+
+    [HttpGet("{id:int}/summary")]
+    public async Task<IActionResult> GetSummary(int id, CancellationToken ct)
+    {
+        var result = await agentService.GetSummaryAsync(id, ct);
+        return result.ToActionResult();
+    }
 }

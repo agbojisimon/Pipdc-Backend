@@ -74,4 +74,83 @@ public class UserService(UserManager<AppUser> userManager, IAppDbContext dbConte
                              || u.LastName.ToLower().Contains(search)
                              || u.Email!.ToLower().Contains(search));
     }
+
+    public async Task<Result<UserDetailDto>> GetByIdAsync(string userId, CancellationToken ct)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return Result<UserDetailDto>.Failure(
+                Error.NotFound("user.notfound", $"User with id {userId} was not found."));
+
+        var roles = await userManager.GetRolesAsync(user);
+
+        var status = user.LockoutEnd is null || user.LockoutEnd < DateTimeOffset.UtcNow
+            ? "Active"
+            : "Suspended";
+
+        var agent = await dbContext.Agents
+            .FirstOrDefaultAsync(a => a.UserId == userId, ct);
+
+        return Result<UserDetailDto>.Success(new UserDetailDto(
+            user.Id,
+            user.FirstName,
+            user.LastName,
+            user.FullName,
+            user.Email!,
+            user.PhoneNumber,
+            user.CreatedAt,
+            roles,
+            status,
+            agent?.Id,
+            agent?.LicenseNumber,
+            agent?.AgencyName,
+            agent?.IsVerified));
+    }
+
+    public async Task<Result> DeactivateAsync(string userId, CancellationToken ct)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return Result.Failure(
+                Error.NotFound("user.notfound", $"User with id {userId} was not found."));
+
+        var currentRoles = await userManager.GetRolesAsync(user);
+        if (currentRoles.Contains("Admin"))
+        {
+            var admins = await userManager.GetUsersInRoleAsync("Admin");
+            if (admins.Count <= 1)
+                return Result.Failure(
+                    Error.Conflict("admin.required", "Cannot deactivate the last admin user."));
+        }
+
+        user.LockoutEnd = DateTimeOffset.MaxValue;
+        var updateResult = await userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+            var errors = string.Join(", ", updateResult.Errors.Select(e => e.Description));
+            return Result.Failure(
+                Error.Validation("user.updatefailed", errors));
+        }
+
+        return Result.Success();
+    }
+
+    public async Task<Result> ActivateAsync(string userId, CancellationToken ct)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return Result.Failure(
+                Error.NotFound("user.notfound", $"User with id {userId} was not found."));
+
+        user.LockoutEnd = null;
+        var updateResult = await userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+            var errors = string.Join(", ", updateResult.Errors.Select(e => e.Description));
+            return Result.Failure(
+                Error.Validation("user.updatefailed", errors));
+        }
+
+        return Result.Success();
+    }
 }
