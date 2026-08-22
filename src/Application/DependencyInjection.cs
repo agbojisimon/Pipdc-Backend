@@ -3,6 +3,7 @@ using PIPDC.Application.Agents;
 using PIPDC.Application.Blog;
 using PIPDC.Application.Conversations;
 using PIPDC.Application.Dashboard;
+using PIPDC.Application.Developments;
 using PIPDC.Application.Enquiries;
 using PIPDC.Application.Properties;
 using PIPDC.Application.SavedProperties;
@@ -23,6 +24,12 @@ public static class DependencyInjection
         services.AddScoped<IBlogService, BlogService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IDashboardService, DashboardService>();
+
+        services.AddScoped<IDevelopmentProjectService, DevelopmentProjectService>();
+        services.AddScoped<IDevelopmentProjectPublicService, DevelopmentProjectPublicService>();
+        services.AddScoped<IDevelopmentUnitService, DevelopmentUnitService>();
+        services.AddScoped<IDevelopmentUpdateService, DevelopmentUpdateService>();
+        services.AddScoped<IDevelopmentTrackingService, DevelopmentTrackingService>();
 
         return services;
     }
