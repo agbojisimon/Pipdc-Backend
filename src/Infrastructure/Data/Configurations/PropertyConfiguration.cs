@@ -69,6 +69,7 @@ public class PropertyConfiguration : IEntityTypeConfiguration<Property>
         builder.HasOne(p => p.Agent)
             .WithMany(a => a.Properties)
             .HasForeignKey(p => p.AgentId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(p => p.CreatedByUser)

@@ -7,6 +7,7 @@ using PIPDC.Application.Developments;
 using PIPDC.Application.Enquiries;
 using PIPDC.Application.Properties;
 using PIPDC.Application.SavedProperties;
+using PIPDC.Application.Services;
 using PIPDC.Application.Users;
 
 namespace PIPDC.Application;
@@ -30,6 +31,7 @@ public static class DependencyInjection
         services.AddScoped<IDevelopmentUnitService, DevelopmentUnitService>();
         services.AddScoped<IDevelopmentUpdateService, DevelopmentUpdateService>();
         services.AddScoped<IDevelopmentTrackingService, DevelopmentTrackingService>();
+        services.AddScoped<IImageService, ImageService>();
 
         return services;
     }

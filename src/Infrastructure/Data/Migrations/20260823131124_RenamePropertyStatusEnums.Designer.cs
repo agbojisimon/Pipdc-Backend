@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PIPDC.Infrastructure.Data;
@@ -12,9 +13,11 @@ using PIPDC.Infrastructure.Data;
 namespace PIPDC.src.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260823131124_RenamePropertyStatusEnums")]
+    partial class RenamePropertyStatusEnums
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -226,10 +229,6 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
-
-                    b.Property<string>("PhotoPublicId")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("PhotoUrl")
                         .HasMaxLength(500)
@@ -670,9 +669,6 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
                     b.Property<int>("DevelopmentProjectId")
                         .HasColumnType("integer");
 
-                    b.PrimitiveCollection<List<string>>("ImagePublicIds")
-                        .HasColumnType("text[]");
-
                     b.PrimitiveCollection<List<string>>("ImageUrls")
                         .IsRequired()
                         .HasColumnType("text[]");
@@ -850,7 +846,7 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<int?>("AgentId")
+                    b.Property<int>("AgentId")
                         .HasColumnType("integer");
 
                     b.PrimitiveCollection<List<string>>("Amenities")
@@ -1301,7 +1297,8 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
                     b.HasOne("PIPDC.Domain.Entities.Agent", "Agent")
                         .WithMany("Properties")
                         .HasForeignKey("AgentId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("PIPDC.Domain.Entities.AppUser", "CreatedByUser")
                         .WithMany()

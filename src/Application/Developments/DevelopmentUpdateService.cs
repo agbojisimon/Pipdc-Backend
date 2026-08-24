@@ -20,7 +20,7 @@ public class DevelopmentUpdateService(IAppDbContext dbContext) : IDevelopmentUpd
 
         var dtos = updates.Select(u => new DevelopmentUpdateDto(
             u.Id, u.Title, u.Description, u.ProgressPercentage,
-            u.UpdateDate, u.ImageUrls, u.CreatedAt, u.UpdatedAt)).ToList();
+            u.UpdateDate, u.ImageUrls, u.ImagePublicIds, u.CreatedAt, u.UpdatedAt)).ToList();
 
         return Result<IReadOnlyList<DevelopmentUpdateDto>>.Success(dtos);
     }
@@ -39,6 +39,7 @@ public class DevelopmentUpdateService(IAppDbContext dbContext) : IDevelopmentUpd
             ProgressPercentage = request.ProgressPercentage,
             UpdateDate = request.UpdateDate ?? DateTime.UtcNow,
             ImageUrls = request.ImageUrls ?? [],
+            ImagePublicIds = request.ImagePublicIds ?? [],
             CreatedAt = DateTime.UtcNow
         };
 
@@ -47,7 +48,7 @@ public class DevelopmentUpdateService(IAppDbContext dbContext) : IDevelopmentUpd
 
         return Result<DevelopmentUpdateDto>.Success(new DevelopmentUpdateDto(
             update.Id, update.Title, update.Description, update.ProgressPercentage,
-            update.UpdateDate, update.ImageUrls, update.CreatedAt, update.UpdatedAt));
+            update.UpdateDate, update.ImageUrls, update.ImagePublicIds, update.CreatedAt, update.UpdatedAt));
     }
 
     public async Task<Result<DevelopmentUpdateDto>> UpdateAsync(int projectId, int updateId, UpdateDevelopmentUpdateRequest request, CancellationToken ct)
@@ -64,13 +65,17 @@ public class DevelopmentUpdateService(IAppDbContext dbContext) : IDevelopmentUpd
         update.ProgressPercentage = request.ProgressPercentage;
         if (request.UpdateDate.HasValue)
             update.UpdateDate = request.UpdateDate.Value;
+        if (request.ImageUrls is not null)
+            update.ImageUrls = request.ImageUrls;
+        if (request.ImagePublicIds is not null)
+            update.ImagePublicIds = request.ImagePublicIds;
         update.UpdatedAt = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(ct);
 
         return Result<DevelopmentUpdateDto>.Success(new DevelopmentUpdateDto(
             update.Id, update.Title, update.Description, update.ProgressPercentage,
-            update.UpdateDate, update.ImageUrls, update.CreatedAt, update.UpdatedAt));
+            update.UpdateDate, update.ImageUrls, update.ImagePublicIds, update.CreatedAt, update.UpdatedAt));
     }
 
     public async Task<Result> DeleteAsync(int projectId, int updateId, CancellationToken ct)

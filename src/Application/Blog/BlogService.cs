@@ -96,6 +96,7 @@ public class BlogService(IAppDbContext dbContext) : IBlogService
             Slug = slug,
             Excerpt = request.Excerpt,
             CoverImageUrl = request.CoverImageUrl,
+            CoverImagePublicId = request.CoverImagePublicId,
             Status = parsedStatus,
             PublishedAt = parsedStatus == BlogPostStatus.Published ? DateTime.UtcNow : null,
             CreatedAt = DateTime.UtcNow
@@ -123,6 +124,7 @@ public class BlogService(IAppDbContext dbContext) : IBlogService
         post.Slug = await EnsureUniqueSlugAsync(request.Slug, request.Title, ct, excludeId: id);
         post.Excerpt = request.Excerpt;
         post.CoverImageUrl = request.CoverImageUrl;
+        post.CoverImagePublicId = request.CoverImagePublicId;
         post.Status = status;
         if (status == BlogPostStatus.Published && post.PublishedAt is null)
             post.PublishedAt = DateTime.UtcNow;

@@ -30,8 +30,8 @@ public record PropertyDto(
     string? CoverImage,
     IReadOnlyList<string> Amenities,
     bool Featured,
-    int AgentId,
-    string AgentName,
+    int? AgentId,
+    string? AgentName,
     string? AgentPhoto,
     bool IsSaved,
     int EnquiryCount,
@@ -95,3 +95,9 @@ public record UpdatePropertyRequest(
     int? AgentId);
 
 public record UpdateFeaturedRequest(bool Featured);
+
+public record ChangeStatusRequest([Required] string Status);
+
+public record ChangeListingTypeRequest([Required] string ListingType);
+
+public record AssignAgentRequest(int? AgentId);

@@ -46,6 +46,7 @@ public record DevelopmentUpdateDto(
     int? ProgressPercentage,
     DateTime UpdateDate,
     IReadOnlyList<string> ImageUrls,
+    IReadOnlyList<string> ImagePublicIds,
     DateTime CreatedAt,
     DateTime? UpdatedAt);
 
@@ -148,13 +149,16 @@ public record CreateDevelopmentUpdateRequest(
     [Required, MaxLength(4000)] string Description,
     [Range(0, 100)] int? ProgressPercentage,
     DateTime? UpdateDate,
-    List<string>? ImageUrls = null);
+    List<string>? ImageUrls = null,
+    List<string>? ImagePublicIds = null);
 
 public record UpdateDevelopmentUpdateRequest(
     [Required, MaxLength(200)] string Title,
     [Required, MaxLength(4000)] string Description,
     [Range(0, 100)] int? ProgressPercentage,
-    DateTime? UpdateDate);
+    DateTime? UpdateDate,
+    List<string>? ImageUrls = null,
+    List<string>? ImagePublicIds = null);
 
 // ── Tracking Request DTOs ──────────────────────────────────────────────────
 

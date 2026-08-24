@@ -5,6 +5,6 @@ public enum PropertyStatus
     Available,
     Pending,
     Sold,
-    Leased,
-    Withdrawn
+    Rented,
+    Unavailable
 }

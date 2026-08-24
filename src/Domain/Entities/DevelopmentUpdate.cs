@@ -10,6 +10,7 @@ public class DevelopmentUpdate : AuditableEntity
     public int? ProgressPercentage { get; set; }
     public DateTime UpdateDate { get; set; }
     public List<string> ImageUrls { get; set; } = [];
+    public List<string> ImagePublicIds { get; set; } = [];
 
     public DevelopmentProject Project { get; set; } = null!;
 }

@@ -42,6 +42,7 @@ public class AgentService(IAppDbContext dbContext, UserManager<AppUser> userMana
                 a.Bio,
                 a.Title,
                 a.PhotoUrl,
+                a.PhotoPublicId,
                 a.AgencyName,
                 a.LicenseNumber,
                 a.PhoneNumber,
@@ -119,6 +120,7 @@ public class AgentService(IAppDbContext dbContext, UserManager<AppUser> userMana
         {
             Title = request.Title,
             PhotoUrl = request.PhotoUrl,
+            PhotoPublicId = request.PhotoPublicId,
             Bio = request.Bio,
             AgencyName = request.AgencyName,
             LicenseNumber = request.LicenseNumber,
@@ -150,6 +152,7 @@ public class AgentService(IAppDbContext dbContext, UserManager<AppUser> userMana
 
         agent.Title = request.Title;
         agent.PhotoUrl = request.PhotoUrl;
+        agent.PhotoPublicId = request.PhotoPublicId;
         agent.Bio = request.Bio;
         agent.AgencyName = request.AgencyName;
         agent.LicenseNumber = request.LicenseNumber;
@@ -230,6 +233,7 @@ public class AgentService(IAppDbContext dbContext, UserManager<AppUser> userMana
             agent.Bio,
             agent.Title,
             agent.PhotoUrl,
+            agent.PhotoPublicId,
             agent.AgencyName,
             agent.LicenseNumber,
             agent.PhoneNumber,

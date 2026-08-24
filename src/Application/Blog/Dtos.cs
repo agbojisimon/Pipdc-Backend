@@ -10,6 +10,7 @@ public record BlogPostDto(
     string Content,
     string? Excerpt,
     string? CoverImageUrl,
+    string? CoverImagePublicId,
     string Status,
     DateTime? PublishedAt,
     DateTime CreatedAt,
@@ -22,6 +23,7 @@ public record CreateBlogPostRequest(
     [MaxLength(200)] string? Slug,
     [MaxLength(1000)] string? Excerpt,
     [MaxLength(500)] string? CoverImageUrl,
+    [MaxLength(200)] string? CoverImagePublicId,
     string? Status);
 
 public record UpdateBlogPostRequest(
@@ -30,6 +32,7 @@ public record UpdateBlogPostRequest(
     [MaxLength(200)] string? Slug,
     [MaxLength(1000)] string? Excerpt,
     [MaxLength(500)] string? CoverImageUrl,
+    [MaxLength(200)] string? CoverImagePublicId,
     [Required] string Status);
 
 public static class BlogPostMappers
@@ -42,6 +45,7 @@ public static class BlogPostMappers
             post.Content,
             post.Excerpt,
             post.CoverImageUrl,
+            post.CoverImagePublicId,
             post.Status.ToString(),
             post.PublishedAt,
             post.CreatedAt,

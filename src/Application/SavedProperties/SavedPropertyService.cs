@@ -9,7 +9,7 @@ namespace PIPDC.Application.SavedProperties;
 
 public class SavedPropertyService(IAppDbContext dbContext) : ISavedPropertyService
 {
-    public async Task<Result<PaginatedResult<PropertyDto>>> GetSavedAsync(string userId, SavedPropertyQueryParameters q, CancellationToken ct)
+    public async Task<Result<PaginatedResult<SavedPropertyDto>>> GetSavedAsync(string userId, SavedPropertyQueryParameters q, CancellationToken ct)
     {
         var query = dbContext.SavedProperties
             .Where(s => s.UserId == userId)
@@ -17,19 +17,23 @@ public class SavedPropertyService(IAppDbContext dbContext) : ISavedPropertyServi
 
         var totalCount = await query.CountAsync(ct);
 
-        var propertyIds = await query
+        var savedRows = await query
             .Skip((q.PageNumber - 1) * q.PageSize)
             .Take(q.PageSize)
-            .Select(s => s.PropertyId)
+            .Select(s => new { s.PropertyId, SavedAt = s.CreatedAt })
             .ToListAsync(ct);
 
-        var items = await dbContext.Properties
+        var propertyIds = savedRows.Select(s => s.PropertyId).ToList();
+        var savedAtMap = savedRows.ToDictionary(s => s.PropertyId, s => s.SavedAt);
+
+        var properties = await dbContext.Properties
             .Include(p => p.Agent)
-                .ThenInclude(a => a.User)
+                .ThenInclude(a => a!.User)
             .Include(p => p.PropertyImages)
             .Where(p => propertyIds.Contains(p.Id))
-            .OrderByDescending(p => p.CreatedAt)
             .ToListAsync(ct);
+
+        var propertyMap = properties.ToDictionary(p => p.Id);
 
         var counts = await dbContext.Enquiries
             .Where(e => propertyIds.Contains(e.PropertyId))
@@ -37,12 +41,15 @@ public class SavedPropertyService(IAppDbContext dbContext) : ISavedPropertyServi
             .Select(g => new { g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
 
-        var dtos = items
-            .Select(p => p.ToDto(isSaved: true, enquiryCount: counts.GetValueOrDefault(p.Id)))
+        var dtos = savedRows
+            .Where(s => propertyMap.ContainsKey(s.PropertyId))
+            .Select(s => new SavedPropertyDto(
+                propertyMap[s.PropertyId].ToDto(isSaved: true, enquiryCount: counts.GetValueOrDefault(s.PropertyId)),
+                s.SavedAt))
             .ToList();
 
-        return Result<PaginatedResult<PropertyDto>>.Success(
-            PaginatedResult<PropertyDto>.Create(dtos, totalCount, q.PageNumber, q.PageSize));
+        return Result<PaginatedResult<SavedPropertyDto>>.Success(
+            PaginatedResult<SavedPropertyDto>.Create(dtos, totalCount, q.PageNumber, q.PageSize));
     }
 
     public async Task<Result<IReadOnlyList<int>>> GetSavedIdsAsync(string userId, CancellationToken ct)

@@ -10,6 +10,7 @@ public static class AgentMappers
             agent.Bio,
             agent.Title,
             agent.PhotoUrl,
+            agent.PhotoPublicId,
             agent.AgencyName,
             agent.LicenseNumber,
             agent.PhoneNumber,

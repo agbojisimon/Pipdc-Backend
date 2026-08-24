@@ -108,7 +108,7 @@ public class MessageService(
             {
                 EnquiryId = enquiryId,
                 ClientUserId = enquiry.UserId,
-                AgentId = enquiry.Property.AgentId,
+                AgentId = enquiry.Property.AgentId!.Value,
                 CreatedAt = now,
                 LastMessageAt = now,
                 UpdatedAt = now
@@ -223,7 +223,7 @@ public class MessageService(
             var enquiry = await dbContext.Enquiries
                 .Include(e => e.Property)
                     .ThenInclude(p => p.Agent)
-                    .ThenInclude(a => a.User)
+                    .ThenInclude(a => a!.User)
                 .FirstOrDefaultAsync(e => e.Id == conversation.EnquiryId, ct);
 
             if (enquiry?.Property.Agent?.User is null)

@@ -54,14 +54,14 @@ public class Property : AuditableEntity
     // Ownership
     // =========================
 
-    public int AgentId { get; set; }
+    public int? AgentId { get; set; }
     public string CreatedByUserId { get; set; } = string.Empty;
 
     // =========================
     // Navigation
     // =========================
 
-    public Agent Agent { get; set; } = null!;
+    public Agent? Agent { get; set; }
     public AppUser CreatedByUser { get; set; } = null!;
     public ICollection<PropertyImage> PropertyImages { get; set; } = [];
     public ICollection<Enquiry> Enquiries { get; set; } = [];

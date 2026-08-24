@@ -8,7 +8,7 @@ public record ConversationClientDto(
     string Email);
 
 public record ConversationAgentDto(
-    int AgentId,
+    int? AgentId,
     string FullName,
     string AgencyName,
     string? PhotoUrl);
