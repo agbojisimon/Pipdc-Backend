@@ -92,4 +92,40 @@ public class PropertiesController(IPropertyService propertyService) : Controller
         var result = await propertyService.DeleteAsync(id, userId, CurrentUserRoles, ct);
         return result.ToActionResult();
     }
+
+    [Authorize(Roles = "Agent,Admin")]
+    [HttpDelete("{id:int}/images/{publicId}")]
+    public async Task<IActionResult> RemoveImage(int id, string publicId, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
+        var result = await propertyService.RemoveImageAsync(id, publicId, userId, CurrentUserRoles, ct);
+        return result.ToActionResult();
+    }
+
+    [Authorize(Roles = "Agent,Admin")]
+    [HttpPatch("{id:int}/status")]
+    public async Task<IActionResult> ChangeStatus(int id, [FromBody] ChangeStatusRequest request, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
+        var result = await propertyService.ChangeStatusAsync(id, request.Status, userId, CurrentUserRoles, ct);
+        return result.ToActionResult();
+    }
+
+    [Authorize(Roles = "Agent,Admin")]
+    [HttpPatch("{id:int}/listing-type")]
+    public async Task<IActionResult> ChangeListingType(int id, [FromBody] ChangeListingTypeRequest request, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
+        var result = await propertyService.ChangeListingTypeAsync(id, request.ListingType, userId, CurrentUserRoles, ct);
+        return result.ToActionResult();
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPut("{id:int}/agent")]
+    public async Task<IActionResult> AssignAgent(int id, [FromBody] AssignAgentRequest request, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
+        var result = await propertyService.AssignAgentAsync(id, request.AgentId, userId, CurrentUserRoles, ct);
+        return result.ToActionResult();
+    }
 }

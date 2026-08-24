@@ -14,4 +14,8 @@ public interface IPropertyService
     Task<Result<PropertyDto>> UpdateAsync(int id, UpdatePropertyRequest request, string currentUserId, IList<string> currentUserRoles, CancellationToken ct);
     Task<Result<PropertyDto>> SetFeaturedAsync(int id, bool featured, string currentUserId, IList<string> currentUserRoles, CancellationToken ct);
     Task<Result> DeleteAsync(int id, string currentUserId, IList<string> currentUserRoles, CancellationToken ct);
+    Task<Result> RemoveImageAsync(int propertyId, string publicId, string currentUserId, IList<string> currentUserRoles, CancellationToken ct);
+    Task<Result<PropertyDto>> ChangeStatusAsync(int id, string status, string currentUserId, IList<string> currentUserRoles, CancellationToken ct);
+    Task<Result<PropertyDto>> ChangeListingTypeAsync(int id, string listingType, string currentUserId, IList<string> currentUserRoles, CancellationToken ct);
+    Task<Result<PropertyDto>> AssignAgentAsync(int id, int? agentId, string currentUserId, IList<string> currentUserRoles, CancellationToken ct);
 }

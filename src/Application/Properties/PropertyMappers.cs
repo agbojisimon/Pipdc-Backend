@@ -25,7 +25,7 @@ public static class PropertyMappers
             property.Price,
             property.Currency,
             property.Period,
-            PropertyStatusDisplay.ToFrontend(property.Status, property.ListingType),
+            PropertyStatusDisplay.ToFrontend(property.Status),
             PropertyTypeDisplay.ToFrontend(property.PropertyType),
             property.PropertyType.ToString(),
             property.ListingType.ToString(),

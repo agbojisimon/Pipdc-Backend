@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PIPDC.Application.Data;
 using PIPDC.Domain.Auth;
 using PIPDC.Domain.Entities;
@@ -9,6 +10,16 @@ namespace PIPDC.Infrastructure.Data;
 public class AppDbContext(DbContextOptions<AppDbContext> options)
     : IdentityDbContext<AppUser>(options), IAppDbContext
 {
+    private static readonly ValueConverter<DateTime, DateTime> DateTimeToUtcConverter = new(
+        v => v.Kind == DateTimeKind.Utc ? v : v.ToUniversalTime(),
+        v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+
+    private static readonly ValueConverter<DateTime?, DateTime?> NullableDateTimeToUtcConverter = new(
+        v => v.HasValue
+            ? (v.Value.Kind == DateTimeKind.Utc ? v.Value : v.Value.ToUniversalTime())
+            : v,
+        v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+
     public DbSet<Property> Properties => Set<Property>();
     public DbSet<PropertyImage> PropertyImages => Set<PropertyImage>();
     public DbSet<Agent> Agents => Set<Agent>();
@@ -32,5 +43,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         base.OnModelCreating(builder);
 
         builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        foreach (var entityType in builder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTime))
+                    property.SetValueConverter(DateTimeToUtcConverter);
+                else if (property.ClrType == typeof(DateTime?))
+                    property.SetValueConverter(NullableDateTimeToUtcConverter);
+            }
+        }
     }
+
 }

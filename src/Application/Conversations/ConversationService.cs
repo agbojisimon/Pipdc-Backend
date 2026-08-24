@@ -16,7 +16,7 @@ public class ConversationService(IAppDbContext dbContext) : IConversationService
         var enquiry = await dbContext.Enquiries
             .Include(e => e.Property)
                 .ThenInclude(p => p.Agent)
-                .ThenInclude(a => a.User)
+                .ThenInclude(a => a!.User)
             .FirstOrDefaultAsync(e => e.Id == enquiryId, ct);
 
         if (enquiry is null)

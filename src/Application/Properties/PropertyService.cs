@@ -3,13 +3,14 @@ using Microsoft.EntityFrameworkCore;
 using PIPDC.Application.Auth;
 using PIPDC.Application.Common;
 using PIPDC.Application.Data;
+using PIPDC.Application.Services;
 using PIPDC.Domain.Common;
 using PIPDC.Domain.Entities;
 using PIPDC.Domain.Enums;
 
 namespace PIPDC.Application.Properties;
 
-public class PropertyService(IAppDbContext dbContext) : IPropertyService
+public class PropertyService(IAppDbContext dbContext, IImageService imageService) : IPropertyService
 {
     public async Task<Result<PaginatedResult<PropertyDto>>> GetAllAsync(PropertyQueryParameters q, string? currentUserId, CancellationToken ct)
     {
@@ -100,7 +101,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
     {
         var property = await dbContext.Properties
             .Include(p => p.Agent)
-                .ThenInclude(a => a.User)
+                .ThenInclude(a => a!.User)
             .Include(p => p.PropertyImages)
             .FirstOrDefaultAsync(p => p.Slug == slug, ct);
 
@@ -154,7 +155,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             return Result<PropertyDto>.Failure(
                 Error.Validation("property.invalidtype", $"'{request.Type ?? request.PropertyType}' is not a valid property type."));
 
-        if (!TryResolveListing(request.Status, request.ListingType, out var listingType, out var status))
+        if (!TryResolveListing(request.Status, request.ListingType, PropertyStatus.Available, out var listingType, out var status))
             return Result<PropertyDto>.Failure(
                 Error.Validation("property.invalidstatus", $"'{request.Status ?? request.ListingType}' is not a valid listing status."));
 
@@ -213,7 +214,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             return Result<PropertyDto>.Failure(
                 Error.Validation("property.invalidtype", $"'{request.Type ?? request.PropertyType}' is not a valid property type."));
 
-        if (!TryResolveListing(request.Status, request.ListingType, out var listingType, out var status))
+        if (!TryResolveListing(request.Status, request.ListingType, property.Status, out var listingType, out var status))
             return Result<PropertyDto>.Failure(
                 Error.Validation("property.invalidstatus", $"'{request.Status ?? request.ListingType}' is not a valid listing status."));
 
@@ -310,6 +311,111 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
     }
 
     // =========================================================
+    // Items 1, 3, 4, 6, 7 — Image remove, Status, ListingType, Agent assign
+    // =========================================================
+
+    public async Task<Result> RemoveImageAsync(int propertyId, string publicId, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
+    {
+        var property = await LoadPropertyAsync(propertyId, ct);
+        if (property is null)
+            return Result.Failure(
+                Error.NotFound("property.notfound", $"Property with id {propertyId} was not found."));
+
+        var ownership = await VerifyOwnershipAsync(property, currentUserId, currentUserRoles, ct);
+        if (ownership.IsFailure)
+            return Result.Failure(ownership.Error);
+
+        var image = property.PropertyImages.FirstOrDefault(i => i.PublicId == publicId);
+        if (image is null)
+            return Result.Failure(
+                Error.NotFound("property.imagenotfound", $"Image with publicId '{publicId}' was not found on this property."));
+
+        if (!string.IsNullOrWhiteSpace(image.PublicId) && !image.PublicId.StartsWith("existing-"))
+        {
+            try { await imageService.DeleteAsync(image.PublicId, ct); }
+            catch { /* best-effort cleanup */ }
+        }
+
+        property.PropertyImages.Remove(image);
+        property.UpdatedAt = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(ct);
+
+        return Result.Success();
+    }
+
+    public async Task<Result<PropertyDto>> ChangeStatusAsync(int id, string status, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
+    {
+        var property = await LoadPropertyAsync(id, ct);
+        if (property is null)
+            return Result<PropertyDto>.Failure(
+                Error.NotFound("property.notfound", $"Property with id {id} was not found."));
+
+        var ownership = await VerifyOwnershipAsync(property, currentUserId, currentUserRoles, ct);
+        if (ownership.IsFailure)
+            return Result<PropertyDto>.Failure(ownership.Error);
+
+        if (!TryResolveStatus(status, out var newStatus))
+            return Result<PropertyDto>.Failure(
+                Error.Validation("property.invalidstatus", $"'{status}' is not a valid property status."));
+
+        property.Status = newStatus;
+        property.UpdatedAt = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(ct);
+
+        var updated = await LoadPropertyAsync(id, ct);
+        return Result<PropertyDto>.Success(updated!.ToDto(enquiryCount: await EnquiryCountAsync(id, ct)));
+    }
+
+    public async Task<Result<PropertyDto>> ChangeListingTypeAsync(int id, string listingType, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
+    {
+        var property = await LoadPropertyAsync(id, ct);
+        if (property is null)
+            return Result<PropertyDto>.Failure(
+                Error.NotFound("property.notfound", $"Property with id {id} was not found."));
+
+        var ownership = await VerifyOwnershipAsync(property, currentUserId, currentUserRoles, ct);
+        if (ownership.IsFailure)
+            return Result<PropertyDto>.Failure(ownership.Error);
+
+        if (!Enum.TryParse<ListingType>(listingType, true, out var newListingType))
+            return Result<PropertyDto>.Failure(
+                Error.Validation("property.invalidlistingtype", $"'{listingType}' is not a valid listing type."));
+
+        property.ListingType = newListingType;
+        property.UpdatedAt = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(ct);
+
+        var updated = await LoadPropertyAsync(id, ct);
+        return Result<PropertyDto>.Success(updated!.ToDto(enquiryCount: await EnquiryCountAsync(id, ct)));
+    }
+
+    public async Task<Result<PropertyDto>> AssignAgentAsync(int id, int? agentId, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
+    {
+        if (!currentUserRoles.Contains(Roles.Admin))
+            return Result<PropertyDto>.Failure(
+                Error.Forbidden("property.forbidden", "Only admins can assign or unassign agents."));
+
+        var property = await LoadPropertyAsync(id, ct);
+        if (property is null)
+            return Result<PropertyDto>.Failure(
+                Error.NotFound("property.notfound", $"Property with id {id} was not found."));
+
+        if (agentId.HasValue)
+        {
+            if (!await dbContext.Agents.AnyAsync(a => a.Id == agentId.Value, ct))
+                return Result<PropertyDto>.Failure(
+                    Error.Validation("property.invalidagent", $"Agent with id {agentId.Value} does not exist."));
+        }
+
+        property.AgentId = agentId;
+        property.UpdatedAt = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(ct);
+
+        var updated = await LoadPropertyAsync(id, ct);
+        return Result<PropertyDto>.Success(updated!.ToDto(enquiryCount: await EnquiryCountAsync(id, ct)));
+    }
+
+    // =========================================================
     // Helpers
     // =========================================================
 
@@ -320,15 +426,15 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
 
         return status.Trim() switch
         {
-            PropertyStatusDisplay.ForSale or "ForSale" => query.Where(p =>
-                (p.Status == PropertyStatus.Available || p.Status == PropertyStatus.Pending)
-                && p.ListingType == ListingType.ForSale),
-            PropertyStatusDisplay.ForLease or "ForLease" => query.Where(p =>
-                (p.Status == PropertyStatus.Available || p.Status == PropertyStatus.Pending)
-                && p.ListingType == ListingType.ForLease),
-            PropertyStatusDisplay.Sold => query.Where(p => p.Status == PropertyStatus.Sold),
-            PropertyStatusDisplay.OffMarket or "Withdrawn" or "Leased" => query.Where(p =>
-                p.Status == PropertyStatus.Withdrawn || p.Status == PropertyStatus.Leased),
+            "Available" or "ForSale" or "For Sale" => query.Where(p =>
+                p.Status == PropertyStatus.Available && p.ListingType == ListingType.ForSale),
+            "ForLease" or "For Lease" or "For Rent" => query.Where(p =>
+                p.Status == PropertyStatus.Available && p.ListingType == ListingType.ForLease),
+            "Pending" => query.Where(p => p.Status == PropertyStatus.Pending),
+            "Sold" => query.Where(p => p.Status == PropertyStatus.Sold),
+            "Rented" or "Leased" => query.Where(p => p.Status == PropertyStatus.Rented),
+            "Unavailable" or "Withdrawn" or "OffMarket" or "Off Market" => query.Where(p =>
+                p.Status == PropertyStatus.Unavailable),
             _ => Enum.TryParse<PropertyStatus>(status, true, out var parsed)
                 ? query.Where(p => p.Status == parsed)
                 : query
@@ -389,8 +495,8 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             p.Amenities,
             p.Featured,
             p.AgentId,
-            p.Agent.User.FullName,
-            p.Agent.PhotoUrl,
+            p.Agent != null ? p.Agent.User.FullName : null,
+            p.Agent != null ? p.Agent.PhotoUrl : null,
             currentUserId == null ? false : p.SavedByUsers.Any(s => s.UserId == currentUserId),
             p.Enquiries.Count(),
             p.CreatedAt,
@@ -405,7 +511,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
             p.Price,
             p.Currency,
             p.Period,
-            PropertyStatusDisplay.ToFrontend(p.Status, p.ListingType),
+            PropertyStatusDisplay.ToFrontend(p.Status),
             PropertyTypeDisplay.ToFrontend(p.PropertyType),
             p.PropertyType.ToString(),
             p.ListingType.ToString(),
@@ -436,7 +542,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
     private async Task<Property?> LoadPropertyAsync(int id, CancellationToken ct) =>
         await dbContext.Properties
             .Include(p => p.Agent)
-                .ThenInclude(a => a.User)
+                .ThenInclude(a => a!.User)
             .Include(p => p.PropertyImages)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
 
@@ -451,28 +557,31 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
     private Task<int> EnquiryCountAsync(int propertyId, CancellationToken ct) =>
         dbContext.Enquiries.CountAsync(e => e.PropertyId == propertyId, ct);
 
-    private async Task<Result<int>> ResolveAgentIdAsync(int? requestedAgentId, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
+    private async Task<Result<int?>> ResolveAgentIdAsync(int? requestedAgentId, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
     {
         if (currentUserRoles.Contains(Roles.Agent))
         {
             var agent = await dbContext.Agents.FirstOrDefaultAsync(a => a.UserId == currentUserId, ct);
             if (agent is null)
-                return Result<int>.Failure(
+                return Result<int?>.Failure(
                     Error.Validation("property.nolinkedagent", "Your account has no linked agent profile — contact an administrator."));
 
-            return Result<int>.Success(agent.Id);
+            return Result<int?>.Success(agent.Id);
         }
 
         if (currentUserRoles.Contains(Roles.Admin))
         {
-            if (!requestedAgentId.HasValue || !await dbContext.Agents.AnyAsync(a => a.Id == requestedAgentId.Value, ct))
-                return Result<int>.Failure(
+            if (!requestedAgentId.HasValue)
+                return Result<int?>.Success(null);
+
+            if (!await dbContext.Agents.AnyAsync(a => a.Id == requestedAgentId.Value, ct))
+                return Result<int?>.Failure(
                     Error.Validation("property.invalidagent", "A valid agentId is required when an admin creates a property."));
 
-            return Result<int>.Success(requestedAgentId.Value);
+            return Result<int?>.Success(requestedAgentId.Value);
         }
 
-        return Result<int>.Failure(
+        return Result<int?>.Failure(
             Error.Unauthorized("property.unauthorized", "You are not authorized to create a property."));
     }
 
@@ -484,7 +593,7 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
         if (currentUserRoles.Contains(Roles.Agent))
         {
             var agent = await dbContext.Agents.FirstOrDefaultAsync(a => a.UserId == currentUserId, ct);
-            if (agent is null || agent.Id != property.AgentId)
+            if (agent is null || property.AgentId != agent.Id)
                 return Result.Failure(
                     Error.Forbidden("property.forbidden", "You cannot modify a property that is not assigned to you."));
 
@@ -498,10 +607,27 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
     private static bool TryResolveType(string? type, out PropertyType propertyType) =>
         PropertyTypeDisplay.TryParse(type, out propertyType);
 
-    private static bool TryResolveListing(string? statusLabel, string? listingType, out ListingType listingTypeOut, out PropertyStatus status)
+    private static bool TryResolveStatus(string? statusLabel, out PropertyStatus status)
+    {
+        status = PropertyStatus.Available;
+        if (string.IsNullOrWhiteSpace(statusLabel))
+            return true;
+
+        return statusLabel.Trim() switch
+        {
+            "Available" or "ForSale" or "For Sale" => (status = PropertyStatus.Available, true).Item2,
+            "Pending" => (status = PropertyStatus.Pending, true).Item2,
+            "Sold" => (status = PropertyStatus.Sold, true).Item2,
+            "Rented" or "Leased" => (status = PropertyStatus.Rented, true).Item2,
+            "Unavailable" or "Withdrawn" or "OffMarket" or "Off Market" => (status = PropertyStatus.Unavailable, true).Item2,
+            _ => Enum.TryParse<PropertyStatus>(statusLabel, true, out status)
+        };
+    }
+
+    private static bool TryResolveListing(string? statusLabel, string? listingType, PropertyStatus fallbackStatus, out ListingType listingTypeOut, out PropertyStatus status)
     {
         listingTypeOut = ListingType.ForSale;
-        status = PropertyStatus.Available;
+        status = fallbackStatus;
 
         if (!string.IsNullOrWhiteSpace(listingType))
         {
@@ -514,25 +640,20 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
         {
             switch (statusLabel.Trim())
             {
-                case PropertyStatusDisplay.ForSale:
-                case "ForSale":
-                    listingTypeOut = ListingType.ForSale;
+                case "Available" or "ForSale" or "For Sale":
                     status = PropertyStatus.Available;
                     return true;
-                case PropertyStatusDisplay.ForLease:
-                case "ForLease":
-                    listingTypeOut = ListingType.ForLease;
-                    status = PropertyStatus.Available;
+                case "Pending":
+                    status = PropertyStatus.Pending;
                     return true;
-                case PropertyStatusDisplay.Sold:
+                case "Sold":
                     status = PropertyStatus.Sold;
                     return true;
-                case PropertyStatusDisplay.OffMarket:
-                case "Withdrawn":
-                    status = PropertyStatus.Withdrawn;
+                case "Rented" or "Leased":
+                    status = PropertyStatus.Rented;
                     return true;
-                case "Leased":
-                    status = PropertyStatus.Leased;
+                case "Unavailable" or "Withdrawn" or "OffMarket" or "Off Market":
+                    status = PropertyStatus.Unavailable;
                     return true;
                 default:
                     return Enum.TryParse<PropertyStatus>(statusLabel, true, out status);
@@ -607,8 +728,8 @@ public class PropertyService(IAppDbContext dbContext) : IPropertyService
         string? CoverImage,
         List<string> Amenities,
         bool Featured,
-        int AgentId,
-        string AgentName,
+        int? AgentId,
+        string? AgentName,
         string? AgentPhoto,
         bool IsSaved,
         int EnquiryCount,

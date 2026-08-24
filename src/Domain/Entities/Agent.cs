@@ -7,6 +7,7 @@ public class Agent : AuditableEntity
     public string? Bio { get; set; }
     public string? Title { get; set; }
     public string? PhotoUrl { get; set; }
+    public string? PhotoPublicId { get; set; }
     public string AgencyName { get; set; } = string.Empty;
     public string? LicenseNumber { get; set; }
     public string PhoneNumber { get; set; } = string.Empty;

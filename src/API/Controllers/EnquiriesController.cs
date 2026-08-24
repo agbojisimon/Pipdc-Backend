@@ -71,6 +71,15 @@ public class EnquiriesController(IEnquiryService enquiryService) : ControllerBas
     }
 
     [Authorize(Roles = "Agent,Admin")]
+    [HttpGet("property/{propertyId:int}")]
+    public async Task<IActionResult> GetByProperty(int propertyId, [FromQuery] EnquiryQueryParameters queryParams, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
+        var result = await enquiryService.GetByPropertyAsync(propertyId, queryParams, userId, CurrentUserRoles, ct);
+        return result.ToActionResult();
+    }
+
+    [Authorize(Roles = "Agent,Admin")]
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {

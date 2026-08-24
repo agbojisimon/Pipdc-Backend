@@ -65,12 +65,41 @@ public class EnquiryService(
             PaginatedResult<EnquiryDto>.Create(items, totalCount, q.PageNumber, q.PageSize));
     }
 
+    public async Task<Result<PaginatedResult<EnquiryDto>>> GetByPropertyAsync(int propertyId, EnquiryQueryParameters q, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
+    {
+        if (!await dbContext.Properties.AnyAsync(p => p.Id == propertyId, ct))
+            return Result<PaginatedResult<EnquiryDto>>.Failure(
+                Error.NotFound("property.notfound", $"Property with id {propertyId} was not found."));
+
+        if (!currentUserRoles.Contains(Roles.Admin))
+        {
+            var ownsProperty = await dbContext.Properties.AnyAsync(
+                p => p.Id == propertyId && p.Agent != null && p.Agent.UserId == currentUserId, ct);
+            if (!ownsProperty)
+                return Result<PaginatedResult<EnquiryDto>>.Failure(
+                    Error.Forbidden("enquiry.forbidden", "You cannot view enquiries for a property you do not own."));
+        }
+
+        IQueryable<Enquiry> query = dbContext.Enquiries.Where(e => e.PropertyId == propertyId);
+        query = ApplyFilters(query, q);
+        var totalCount = await query.CountAsync(ct);
+        query = ApplySorting(query, q);
+
+        var items = await Project(query)
+            .Skip((q.PageNumber - 1) * q.PageSize)
+            .Take(q.PageSize)
+            .ToListAsync(ct);
+
+        return Result<PaginatedResult<EnquiryDto>>.Success(
+            PaginatedResult<EnquiryDto>.Create(items, totalCount, q.PageNumber, q.PageSize));
+    }
+
     public async Task<Result<EnquiryDto>> GetByIdAsync(int id, string currentUserId, IList<string> currentUserRoles, CancellationToken ct)
     {
         var enquiry = await dbContext.Enquiries
             .Include(e => e.Property)
                 .ThenInclude(p => p.Agent)
-                .ThenInclude(a => a.User)
+                .ThenInclude(a => a!.User)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
 
         if (enquiry is null)
@@ -119,7 +148,7 @@ public class EnquiryService(
         var created = await dbContext.Enquiries
             .Include(e => e.Property)
                 .ThenInclude(p => p.Agent)
-                .ThenInclude(a => a.User)
+                .ThenInclude(a => a!.User)
             .FirstAsync(e => e.Id == enquiry.Id, ct);
 
         // Email the assigned agent about the new enquiry (best-effort).
@@ -153,7 +182,7 @@ public class EnquiryService(
         var enquiry = await dbContext.Enquiries
             .Include(e => e.Property)
                 .ThenInclude(p => p.Agent)
-                .ThenInclude(a => a.User)
+                .ThenInclude(a => a!.User)
             .Include(e => e.User)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
 
@@ -205,7 +234,8 @@ public class EnquiryService(
     public async Task<Result<PaginatedResult<AgentEnquirySummaryDto>>> GetAgentSummariesAsync(EnquiryQueryParameters q, CancellationToken ct)
     {
         var aggregates = await dbContext.Enquiries
-            .GroupBy(e => e.Property.AgentId)
+            .Where(e => e.Property.AgentId != null)
+            .GroupBy(e => e.Property.AgentId!.Value)
             .Select(g => new
             {
                 AgentId = g.Key,
@@ -276,7 +306,7 @@ public class EnquiryService(
         var enquiry = await dbContext.Enquiries
             .Include(e => e.Property)
                 .ThenInclude(p => p.Agent)
-                .ThenInclude(a => a.User)
+                .ThenInclude(a => a!.User)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
 
         if (enquiry is null)
@@ -362,7 +392,7 @@ public class EnquiryService(
             e.Property.Slug,
             e.UserId,
             e.Property.AgentId,
-            e.Property.Agent.User.FullName,
+            e.Property.Agent != null ? e.Property.Agent.User.FullName : string.Empty,
             e.AgentReadAt,
             e.AgentReadAt != null,
             e.CreatedAt,

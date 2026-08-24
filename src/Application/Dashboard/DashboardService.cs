@@ -115,7 +115,7 @@ public class DashboardService(
         return Result<ClientDashboardDto>.Success(new ClientDashboardDto(
             profile,
             saved.Value.TotalCount,
-            saved.Value.Items,
+            saved.Value.Items.Select(sp => sp.Property).ToList(),
             enquiries.Value.TotalCount,
             pending.Value.TotalCount,
             enquiries.Value.Items));

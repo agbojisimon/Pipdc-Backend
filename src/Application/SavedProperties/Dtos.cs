@@ -1,5 +1,7 @@
+using PIPDC.Application.Properties;
+
 namespace PIPDC.Application.SavedProperties;
 
 public record SavedPropertyDto(
-    int Id,
+    PropertyDto Property,
     DateTime SavedAt);

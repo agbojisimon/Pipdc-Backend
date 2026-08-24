@@ -118,6 +118,6 @@ public class DevelopmentProjectPublicService(IAppDbContext dbContext) : IDevelop
                 u.Price, u.Currency, u.Description, u.CreatedAt, u.UpdatedAt)).ToList(),
             p.Updates.OrderByDescending(u => u.UpdateDate).Select(u => new DevelopmentUpdateDto(
                 u.Id, u.Title, u.Description, u.ProgressPercentage, u.UpdateDate,
-                u.ImageUrls, u.CreatedAt, u.UpdatedAt)).ToList());
+                u.ImageUrls, u.ImagePublicIds, u.CreatedAt, u.UpdatedAt)).ToList());
     }
 }

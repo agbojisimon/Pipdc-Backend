@@ -17,6 +17,9 @@ public class AgentConfiguration : IEntityTypeConfiguration<Agent>
         builder.Property(a => a.PhotoUrl)
             .HasMaxLength(500);
 
+        builder.Property(a => a.PhotoPublicId)
+            .HasMaxLength(200);
+
         builder.Property(a => a.AgencyName)
             .IsRequired()
             .HasMaxLength(200);

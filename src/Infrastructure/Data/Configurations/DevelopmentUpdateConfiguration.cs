@@ -16,6 +16,13 @@ public class DevelopmentUpdateConfiguration : IEntityTypeConfiguration<Developme
             .IsRequired()
             .HasMaxLength(4000);
 
+        builder.Property(u => u.ImageUrls)
+            .HasColumnType("text[]");
+
+        builder.Property(u => u.ImagePublicIds)
+            .HasColumnType("text[]")
+            .IsRequired(false);
+
         builder.HasIndex(u => new { u.DevelopmentProjectId, u.UpdateDate });
 
         builder.HasOne(u => u.Project)
