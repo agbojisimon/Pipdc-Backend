@@ -3,3 +3,10 @@ obj/
 *.user
 *.suo
 .vs/
+
+# Local docs / planning
+CONTROLLER_PATTERNS_AND_IMPROVEMENTS.md
+PHASE4_IMPL_PLAN.md
+PIPDC_DEVELOPMENT_ROADMAP.md
+PIPDC_PROJECT_DOCUMENTATION.md
+log.txt
