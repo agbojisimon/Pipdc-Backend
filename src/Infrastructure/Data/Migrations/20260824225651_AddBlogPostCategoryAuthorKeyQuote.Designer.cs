@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PIPDC.Infrastructure.Data;
@@ -12,9 +13,11 @@ using PIPDC.Infrastructure.Data;
 namespace PIPDC.src.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260824225651_AddBlogPostCategoryAuthorKeyQuote")]
+    partial class AddBlogPostCategoryAuthorKeyQuote
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -481,28 +484,28 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 8, 24, 22, 56, 49, 826, DateTimeKind.Utc).AddTicks(6157),
                             Name = "Market Trends",
                             Slug = "market-trends"
                         },
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 8, 24, 22, 56, 49, 826, DateTimeKind.Utc).AddTicks(6723),
                             Name = "Investment Guide",
                             Slug = "investment-guide"
                         },
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 8, 24, 22, 56, 49, 826, DateTimeKind.Utc).AddTicks(6726),
                             Name = "Legal & Tax",
                             Slug = "legal-tax"
                         },
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 8, 24, 22, 56, 49, 826, DateTimeKind.Utc).AddTicks(6728),
                             Name = "Home Buying Tips",
                             Slug = "home-buying-tips"
                         });

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PIPDC.Infrastructure.Data;
@@ -12,9 +13,11 @@ using PIPDC.Infrastructure.Data;
 namespace PIPDC.src.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260824165623_RemoveBlogContentMaxLength")]
+    partial class RemoveBlogContentMaxLength
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -372,12 +375,6 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AuthorUserId")
-                        .HasColumnType("text");
-
-                    b.Property<int?>("CategoryId")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasColumnType("text");
@@ -396,10 +393,6 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
                     b.Property<string>("Excerpt")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("KeyQuote")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
 
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("timestamp with time zone");
@@ -423,89 +416,10 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CategoryId");
-
                     b.HasIndex("Slug")
                         .IsUnique();
 
                     b.ToTable("BlogPosts");
-                });
-
-            modelBuilder.Entity("PIPDC.Domain.Entities.BlogPostTag", b =>
-                {
-                    b.Property<int>("BlogPostId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TagId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("BlogPostId", "TagId");
-
-                    b.HasIndex("TagId");
-
-                    b.ToTable("BlogPostTags");
-                });
-
-            modelBuilder.Entity("PIPDC.Domain.Entities.Category", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("Slug")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.HasIndex("Slug")
-                        .IsUnique();
-
-                    b.ToTable("Categories");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Market Trends",
-                            Slug = "market-trends"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Investment Guide",
-                            Slug = "investment-guide"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Legal & Tax",
-                            Slug = "legal-tax"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Home Buying Tips",
-                            Slug = "home-buying-tips"
-                        });
                 });
 
             modelBuilder.Entity("PIPDC.Domain.Entities.Conversation", b =>
@@ -1168,38 +1082,6 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
                     b.ToTable("SavedProperties");
                 });
 
-            modelBuilder.Entity("PIPDC.Domain.Entities.Tag", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("Slug")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.HasIndex("Slug")
-                        .IsUnique();
-
-                    b.ToTable("Tags");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -1280,35 +1162,6 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("PIPDC.Domain.Entities.BlogPost", b =>
-                {
-                    b.HasOne("PIPDC.Domain.Entities.Category", "Category")
-                        .WithMany("BlogPosts")
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Category");
-                });
-
-            modelBuilder.Entity("PIPDC.Domain.Entities.BlogPostTag", b =>
-                {
-                    b.HasOne("PIPDC.Domain.Entities.BlogPost", "BlogPost")
-                        .WithMany("BlogPostTags")
-                        .HasForeignKey("BlogPostId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PIPDC.Domain.Entities.Tag", "Tag")
-                        .WithMany("BlogPostTags")
-                        .HasForeignKey("TagId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("BlogPost");
-
-                    b.Navigation("Tag");
                 });
 
             modelBuilder.Entity("PIPDC.Domain.Entities.Conversation", b =>
@@ -1526,16 +1379,6 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
                     b.Navigation("SavedProperties");
                 });
 
-            modelBuilder.Entity("PIPDC.Domain.Entities.BlogPost", b =>
-                {
-                    b.Navigation("BlogPostTags");
-                });
-
-            modelBuilder.Entity("PIPDC.Domain.Entities.Category", b =>
-                {
-                    b.Navigation("BlogPosts");
-                });
-
             modelBuilder.Entity("PIPDC.Domain.Entities.Conversation", b =>
                 {
                     b.Navigation("Messages");
@@ -1573,11 +1416,6 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
                     b.Navigation("SaleRecord");
 
                     b.Navigation("SavedByUsers");
-                });
-
-            modelBuilder.Entity("PIPDC.Domain.Entities.Tag", b =>
-                {
-                    b.Navigation("BlogPostTags");
                 });
 #pragma warning restore 612, 618
         }

@@ -13,4 +13,9 @@ public class BlogPost : AuditableEntity
     public string? CoverImagePublicId { get; set; }
     public BlogPostStatus Status { get; set; }
     public DateTime? PublishedAt { get; set; }
+    public string? KeyQuote { get; set; }
+    public int? CategoryId { get; set; }
+    public Category? Category { get; set; }
+    public string? AuthorUserId { get; set; }
+    public ICollection<BlogPostTag> BlogPostTags { get; set; } = [];
 }

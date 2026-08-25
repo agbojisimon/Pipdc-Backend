@@ -29,6 +29,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<SaleRecord> SaleRecords => Set<SaleRecord>();
     public DbSet<LeaseRecord> LeaseRecords => Set<LeaseRecord>();
     public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Tag> Tags => Set<Tag>();
+    public DbSet<BlogPostTag> BlogPostTags => Set<BlogPostTag>();
     public DbSet<SavedProperty> SavedProperties => Set<SavedProperty>();
     public DbSet<AiChatSession> AiChatSessions => Set<AiChatSession>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -43,6 +46,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         base.OnModelCreating(builder);
 
         builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        builder.Entity<Category>().HasData(
+            new Category { Id = 1, Name = "Market Trends", Slug = "market-trends", CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Category { Id = 2, Name = "Investment Guide", Slug = "investment-guide", CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Category { Id = 3, Name = "Legal & Tax", Slug = "legal-tax", CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Category { Id = 4, Name = "Home Buying Tips", Slug = "home-buying-tips", CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
+        );
 
         foreach (var entityType in builder.Model.GetEntityTypes())
         {

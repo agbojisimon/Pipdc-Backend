@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PIPDC.Infrastructure.Data;
@@ -12,9 +13,11 @@ using PIPDC.Infrastructure.Data;
 namespace PIPDC.src.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260824224758_AddBlogTagAndJoinTable")]
+    partial class AddBlogTagAndJoinTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -372,9 +375,6 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AuthorUserId")
-                        .HasColumnType("text");
-
                     b.Property<int?>("CategoryId")
                         .HasColumnType("integer");
 
@@ -396,10 +396,6 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
                     b.Property<string>("Excerpt")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("KeyQuote")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
 
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("timestamp with time zone");
@@ -481,28 +477,28 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
                         new
                         {
                             Id = 1,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 8, 24, 22, 47, 56, 517, DateTimeKind.Utc).AddTicks(1102),
                             Name = "Market Trends",
                             Slug = "market-trends"
                         },
                         new
                         {
                             Id = 2,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 8, 24, 22, 47, 56, 517, DateTimeKind.Utc).AddTicks(1683),
                             Name = "Investment Guide",
                             Slug = "investment-guide"
                         },
                         new
                         {
                             Id = 3,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 8, 24, 22, 47, 56, 517, DateTimeKind.Utc).AddTicks(1686),
                             Name = "Legal & Tax",
                             Slug = "legal-tax"
                         },
                         new
                         {
                             Id = 4,
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTime(2026, 8, 24, 22, 47, 56, 517, DateTimeKind.Utc).AddTicks(1688),
                             Name = "Home Buying Tips",
                             Slug = "home-buying-tips"
                         });
@@ -1284,12 +1280,9 @@ namespace PIPDC.src.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("PIPDC.Domain.Entities.BlogPost", b =>
                 {
-                    b.HasOne("PIPDC.Domain.Entities.Category", "Category")
+                    b.HasOne("PIPDC.Domain.Entities.Category", null)
                         .WithMany("BlogPosts")
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Category");
+                        .HasForeignKey("CategoryId");
                 });
 
             modelBuilder.Entity("PIPDC.Domain.Entities.BlogPostTag", b =>
