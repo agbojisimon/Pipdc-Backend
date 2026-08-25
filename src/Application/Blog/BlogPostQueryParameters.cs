@@ -4,6 +4,8 @@ public class BlogPostQueryParameters
 {
     public string? Keyword { get; set; }
     public string? Status { get; set; }
+    public int? CategoryId { get; set; }
+    public int? TagId { get; set; }
 
     private int _pageNumber = 1;
     public int PageNumber

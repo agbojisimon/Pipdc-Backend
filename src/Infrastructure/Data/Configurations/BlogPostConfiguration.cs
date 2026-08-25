@@ -21,8 +21,7 @@ public class BlogPostConfiguration : IEntityTypeConfiguration<BlogPost>
             .IsUnique();
 
         builder.Property(b => b.Content)
-            .IsRequired()
-            .HasMaxLength(4000);
+            .IsRequired();
 
         builder.Property(b => b.Excerpt)
             .HasMaxLength(1000);
@@ -35,5 +34,13 @@ public class BlogPostConfiguration : IEntityTypeConfiguration<BlogPost>
 
         builder.Property(b => b.Status)
             .HasConversion<string>();
+
+        builder.Property(b => b.KeyQuote)
+            .HasMaxLength(500);
+
+        builder.HasOne(b => b.Category)
+            .WithMany(c => c.BlogPosts)
+            .HasForeignKey(b => b.CategoryId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

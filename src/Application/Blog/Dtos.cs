@@ -15,7 +15,13 @@ public record BlogPostDto(
     DateTime? PublishedAt,
     DateTime CreatedAt,
     DateTime? UpdatedAt,
-    int ReadMinutes);
+    int ReadMinutes,
+    string? KeyQuote,
+    int? CategoryId,
+    string? CategoryName,
+    string? AuthorUserId,
+    string? AuthorName,
+    IReadOnlyList<TagDto> Tags);
 
 public record CreateBlogPostRequest(
     [Required, MaxLength(200)] string Title,
@@ -24,7 +30,10 @@ public record CreateBlogPostRequest(
     [MaxLength(1000)] string? Excerpt,
     [MaxLength(500)] string? CoverImageUrl,
     [MaxLength(200)] string? CoverImagePublicId,
-    string? Status);
+    string? Status,
+    [MaxLength(500)] string? KeyQuote,
+    int? CategoryId,
+    List<int>? TagIds);
 
 public record UpdateBlogPostRequest(
     [Required, MaxLength(200)] string Title,
@@ -33,7 +42,10 @@ public record UpdateBlogPostRequest(
     [MaxLength(1000)] string? Excerpt,
     [MaxLength(500)] string? CoverImageUrl,
     [MaxLength(200)] string? CoverImagePublicId,
-    [Required] string Status);
+    [Required] string Status,
+    [MaxLength(500)] string? KeyQuote,
+    int? CategoryId,
+    List<int>? TagIds);
 
 public static class BlogPostMappers
 {
@@ -50,7 +62,13 @@ public static class BlogPostMappers
             post.PublishedAt,
             post.CreatedAt,
             post.UpdatedAt,
-            Math.Max(1, (int)Math.Ceiling(post.Content.Length / 400.0)));
+            Math.Max(1, (int)Math.Ceiling(post.Content.Length / 400.0)),
+            post.KeyQuote,
+            post.CategoryId,
+            post.Category?.Name,
+            post.AuthorUserId,
+            null,
+            post.BlogPostTags.Select(bpt => new TagDto(bpt.Tag.Id, bpt.Tag.Name, bpt.Tag.Slug, 0)).ToList());
 
     public static string ToFrontendStatus(BlogPostStatus status) =>
         status == BlogPostStatus.Published ? "Published" : status.ToString();

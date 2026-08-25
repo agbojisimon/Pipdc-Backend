@@ -15,6 +15,9 @@ public interface IAppDbContext
     DbSet<SaleRecord> SaleRecords { get; }
     DbSet<LeaseRecord> LeaseRecords { get; }
     DbSet<BlogPost> BlogPosts { get; }
+    DbSet<Category> Categories { get; }
+    DbSet<Tag> Tags { get; }
+    DbSet<BlogPostTag> BlogPostTags { get; }
     DbSet<SavedProperty> SavedProperties { get; }
     DbSet<AiChatSession> AiChatSessions { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
