@@ -5,6 +5,7 @@ using PIPDC.Application.Conversations;
 using PIPDC.Application.Dashboard;
 using PIPDC.Application.Developments;
 using PIPDC.Application.Enquiries;
+using PIPDC.Application.Locations;
 using PIPDC.Application.Properties;
 using PIPDC.Application.SavedProperties;
 using PIPDC.Application.Services;
@@ -25,6 +26,7 @@ public static class DependencyInjection
         services.AddScoped<IBlogService, BlogService>();
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<ITagService, TagService>();
+        services.AddScoped<ILocationService, LocationService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IDashboardService, DashboardService>();
 

@@ -41,6 +41,7 @@ public static class PropertyMappers
             property.State,
             property.Latitude,
             property.Longitude,
+            property.LocationId,
             images,
             cover,
             property.Amenities,

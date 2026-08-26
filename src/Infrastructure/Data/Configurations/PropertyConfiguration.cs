@@ -103,5 +103,10 @@ public class PropertyConfiguration : IEntityTypeConfiguration<Property>
             .WithOne(l => l.Property)
             .HasForeignKey<LeaseRecord>(l => l.PropertyId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(p => p.Location)
+            .WithMany(l => l.Properties)
+            .HasForeignKey(p => p.LocationId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

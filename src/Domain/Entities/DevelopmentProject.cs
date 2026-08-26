@@ -9,6 +9,8 @@ public class DevelopmentProject : AuditableEntity
     public string Description { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
     public string Location { get; set; } = string.Empty;
+    public int? LocationRefId { get; set; }
+    public Location? LocationRef { get; set; }
     public string? Developer { get; set; }
     public DevelopmentProjectStatus Status { get; set; }
     public DateTime? ExpectedCompletionDate { get; set; }
