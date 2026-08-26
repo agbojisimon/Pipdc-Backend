@@ -26,7 +26,11 @@ public class PropertyService(IAppDbContext dbContext, IImageService imageService
                                   || p.Area!.ToLower().Contains(search));
         }
 
-        if (!string.IsNullOrWhiteSpace(q.Location))
+        if (q.LocationId.HasValue)
+        {
+            query = query.Where(p => p.LocationId == q.LocationId);
+        }
+        else if (!string.IsNullOrWhiteSpace(q.Location))
         {
             var location = q.Location.ToLower();
             query = query.Where(p => p.Area!.ToLower().Contains(location)
@@ -489,6 +493,7 @@ public class PropertyService(IAppDbContext dbContext, IImageService imageService
             p.State,
             p.Latitude,
             p.Longitude,
+            p.LocationId,
             p.PropertyImages.OrderBy(i => i.DisplayOrder).Select(i => i.Url).ToList(),
             p.PropertyImages.Where(i => i.IsCover).Select(i => i.Url).FirstOrDefault()
                 ?? p.PropertyImages.OrderBy(i => i.DisplayOrder).Select(i => i.Url).FirstOrDefault(),
@@ -527,6 +532,7 @@ public class PropertyService(IAppDbContext dbContext, IImageService imageService
             p.State,
             p.Latitude,
             p.Longitude,
+            p.LocationId,
             p.Images,
             p.CoverImage,
             p.Amenities,
@@ -724,6 +730,7 @@ public class PropertyService(IAppDbContext dbContext, IImageService imageService
         string State,
         double? Latitude,
         double? Longitude,
+        int? LocationId,
         IReadOnlyList<string> Images,
         string? CoverImage,
         List<string> Amenities,

@@ -18,6 +18,7 @@ public interface IAppDbContext
     DbSet<Category> Categories { get; }
     DbSet<Tag> Tags { get; }
     DbSet<BlogPostTag> BlogPostTags { get; }
+    DbSet<Location> Locations { get; }
     DbSet<SavedProperty> SavedProperties { get; }
     DbSet<AiChatSession> AiChatSessions { get; }
     DbSet<RefreshToken> RefreshTokens { get; }

@@ -5,6 +5,7 @@ public class DevelopmentProjectQueryParameters
     public string? Keyword { get; set; }
     public string? Status { get; set; }
     public bool? Featured { get; set; }
+    public int? LocationId { get; set; }
 
     private int _pageNumber = 1;
     public int PageNumber

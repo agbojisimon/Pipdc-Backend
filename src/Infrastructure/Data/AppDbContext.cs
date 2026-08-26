@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PIPDC.Application.Data;
 using PIPDC.Domain.Auth;
 using PIPDC.Domain.Entities;
+using PIPDC.Domain.Enums;
 
 namespace PIPDC.Infrastructure.Data;
 
@@ -32,6 +33,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<BlogPostTag> BlogPostTags => Set<BlogPostTag>();
+    public DbSet<Location> Locations => Set<Location>();
     public DbSet<SavedProperty> SavedProperties => Set<SavedProperty>();
     public DbSet<AiChatSession> AiChatSessions => Set<AiChatSession>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -54,6 +56,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             new Category { Id = 4, Name = "Home Buying Tips", Slug = "home-buying-tips", CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc) }
         );
 
+        SeedLocations(builder);
+
         foreach (var entityType in builder.Model.GetEntityTypes())
         {
             foreach (var property in entityType.GetProperties())
@@ -64,6 +68,64 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
                     property.SetValueConverter(NullableDateTimeToUtcConverter);
             }
         }
+    }
+
+    private static void SeedLocations(ModelBuilder builder)
+    {
+        var seedDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        var states = new (string Name, string Slug)[]
+        {
+            ("Abia", "abia"),
+            ("Adamawa", "adamawa"),
+            ("Akwa Ibom", "akwa-ibom"),
+            ("Anambra", "anambra"),
+            ("Bauchi", "bauchi"),
+            ("Bayelsa", "bayelsa"),
+            ("Benue", "benue"),
+            ("Borno", "borno"),
+            ("Cross River", "cross-river"),
+            ("Delta", "delta"),
+            ("Ebonyi", "ebonyi"),
+            ("Edo", "edo"),
+            ("Ekiti", "ekiti"),
+            ("Enugu", "enugu"),
+            ("FCT", "fct"),
+            ("Gombe", "gombe"),
+            ("Imo", "imo"),
+            ("Jigawa", "jigawa"),
+            ("Kaduna", "kaduna"),
+            ("Kano", "kano"),
+            ("Katsina", "katsina"),
+            ("Kebbi", "kebbi"),
+            ("Kogi", "kogi"),
+            ("Kwara", "kwara"),
+            ("Lagos", "lagos"),
+            ("Nasarawa", "nasarawa"),
+            ("Niger", "niger"),
+            ("Ogun", "ogun"),
+            ("Ondo", "ondo"),
+            ("Osun", "osun"),
+            ("Oyo", "oyo"),
+            ("Plateau", "plateau"),
+            ("Rivers", "rivers"),
+            ("Sokoto", "sokoto"),
+            ("Taraba", "taraba"),
+            ("Yobe", "yobe"),
+            ("Zamfara", "zamfara"),
+        };
+
+        var locationData = states.Select((s, i) => new Location
+        {
+            Id = i + 1,
+            Name = s.Name,
+            Slug = s.Slug,
+            Type = LocationType.State,
+            ParentId = null,
+            CreatedAt = seedDate,
+        }).ToArray();
+
+        builder.Entity<Location>().HasData(locationData);
     }
 
 }

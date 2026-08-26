@@ -55,5 +55,10 @@ public class DevelopmentProjectConfiguration : IEntityTypeConfiguration<Developm
             .WithOne(t => t.Project)
             .HasForeignKey(t => t.DevelopmentProjectId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(p => p.LocationRef)
+            .WithMany(l => l.DevelopmentProjects)
+            .HasForeignKey(p => p.LocationRefId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

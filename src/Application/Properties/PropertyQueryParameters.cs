@@ -5,6 +5,7 @@ public class PropertyQueryParameters
     public string? Query { get; set; }
     public string? Keyword { get; set; }
     public string? Location { get; set; }
+    public int? LocationId { get; set; }
     public string? City { get; set; }
     public string? State { get; set; }
     public string? Type { get; set; }

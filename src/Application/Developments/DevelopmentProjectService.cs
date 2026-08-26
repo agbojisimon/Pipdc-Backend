@@ -31,6 +31,9 @@ public class DevelopmentProjectService(IAppDbContext dbContext) : IDevelopmentPr
         if (q.Featured.HasValue)
             query = query.Where(p => p.Featured == q.Featured.Value);
 
+        if (q.LocationId.HasValue)
+            query = query.Where(p => p.LocationRefId == q.LocationId);
+
         var totalCount = await query.CountAsync(ct);
 
         var items = await query
@@ -48,6 +51,7 @@ public class DevelopmentProjectService(IAppDbContext dbContext) : IDevelopmentPr
             p.Slug,
             p.Description,
             p.Location,
+            p.LocationRefId,
             p.Developer,
             p.Status.ToString(),
             p.ExpectedCompletionDate,
@@ -89,6 +93,7 @@ public class DevelopmentProjectService(IAppDbContext dbContext) : IDevelopmentPr
             Description = request.Description,
             Slug = slug,
             Location = request.Location,
+            LocationRefId = request.LocationRefId,
             Developer = request.Developer,
             Status = string.IsNullOrWhiteSpace(request.Status)
                 ? DevelopmentProjectStatus.Planned
@@ -136,6 +141,7 @@ public class DevelopmentProjectService(IAppDbContext dbContext) : IDevelopmentPr
         project.Description = request.Description;
         project.Slug = slug;
         project.Location = request.Location;
+        project.LocationRefId = request.LocationRefId;
         project.Developer = request.Developer;
         project.Status = Enum.Parse<DevelopmentProjectStatus>(request.Status, true);
         project.ExpectedCompletionDate = request.ExpectedCompletionDate;
@@ -204,7 +210,7 @@ public class DevelopmentProjectService(IAppDbContext dbContext) : IDevelopmentPr
 
         var d = result.Value;
         return Result<DevelopmentProjectDto>.Success(new DevelopmentProjectDto(
-            d.Id, d.Name, d.Slug, d.Description, d.Location, d.Developer,
+            d.Id, d.Name, d.Slug, d.Description, d.Location, d.LocationRefId, d.Developer,
             d.Status, d.ExpectedCompletionDate, d.ProgressPercentage, d.Featured,
             d.Images, d.UnitCount, d.UpdateCount, d.CreatedAt, d.UpdatedAt));
     }
@@ -217,6 +223,7 @@ public class DevelopmentProjectService(IAppDbContext dbContext) : IDevelopmentPr
             p.Slug,
             p.Description,
             p.Location,
+            p.LocationRefId,
             p.Developer,
             p.Status.ToString(),
             p.ExpectedCompletionDate,
