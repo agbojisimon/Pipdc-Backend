@@ -10,6 +10,8 @@ public record AdminDashboardDto(
     int TotalAgents,
     int TotalEnquiries,
     int TotalUsers,
+    int TotalDevelopmentProjects,
+    int TotalBlogPosts,
     IReadOnlyList<PropertyDto> RecentProperties,
     IReadOnlyList<EnquiryDto> RecentEnquiries);
 
