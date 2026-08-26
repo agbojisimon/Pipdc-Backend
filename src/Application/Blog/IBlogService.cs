@@ -5,8 +5,8 @@ namespace PIPDC.Application.Blog;
 
 public interface IBlogService
 {
-    Task<Result<IReadOnlyList<BlogPostDto>>> GetAllAsync(BlogPostQueryParameters q, CancellationToken ct);
-    Task<Result<IReadOnlyList<BlogPostDto>>> GetAllManagedAsync(BlogPostQueryParameters q, CancellationToken ct);
+    Task<Result<PaginatedResult<BlogPostDto>>> GetAllAsync(BlogPostQueryParameters q, CancellationToken ct);
+    Task<Result<PaginatedResult<BlogPostDto>>> GetAllManagedAsync(BlogPostQueryParameters q, CancellationToken ct);
     Task<Result<BlogPostDto>> GetBySlugAsync(string slug, bool isAdmin, CancellationToken ct);
     Task<Result<IReadOnlyList<BlogPostDto>>> GetRelatedAsync(string slug, CancellationToken ct);
     Task<Result<BlogPostDto>> CreateAsync(CreateBlogPostRequest request, string? authorUserId, CancellationToken ct);

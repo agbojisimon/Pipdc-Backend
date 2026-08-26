@@ -147,6 +147,20 @@ public class AuthService(
         return Result.Success();
     }
 
+    public async Task<Result> ChangePasswordAsync(string userId, ChangePasswordRequest request, CancellationToken ct)
+    {
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return Result.Failure(Error.NotFound("USER_NOT_FOUND", "User not found."));
+
+        var result = await userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+        if (!result.Succeeded)
+            return Result.Failure(Error.Validation("PASSWORD_CHANGE_FAILED",
+                string.Join("; ", result.Errors.Select(e => e.Description))));
+
+        return Result.Success();
+    }
+
     public async Task<Result> AddRoleAsync(AddRoleRequest request, CancellationToken ct)
     {
         var user = await userManager.FindByEmailAsync(request.Email);

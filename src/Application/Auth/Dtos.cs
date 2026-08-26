@@ -21,6 +21,10 @@ public record UpdateProfileRequest(
     [Required, MaxLength(100)] string FirstName,
     [Required, MaxLength(100)] string LastName,
     [MaxLength(20)] string? PhoneNumber);
+
+public record ChangePasswordRequest(
+    [Required] string CurrentPassword,
+    [Required, MinLength(8)] string NewPassword);
 public record CurrentUserDto(
     string Id,
     string Email,

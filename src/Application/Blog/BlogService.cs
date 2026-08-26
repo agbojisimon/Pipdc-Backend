@@ -10,7 +10,7 @@ namespace PIPDC.Application.Blog;
 
 public class BlogService(IAppDbContext dbContext) : IBlogService
 {
-    public async Task<Result<IReadOnlyList<BlogPostDto>>> GetAllAsync(BlogPostQueryParameters q, CancellationToken ct)
+    public async Task<Result<PaginatedResult<BlogPostDto>>> GetAllAsync(BlogPostQueryParameters q, CancellationToken ct)
     {
         IQueryable<BlogPost> query = dbContext.BlogPosts;
 
@@ -41,6 +41,8 @@ public class BlogService(IAppDbContext dbContext) : IBlogService
         if (q.TagId.HasValue)
             query = query.Where(b => b.BlogPostTags.Any(bpt => bpt.TagId == q.TagId));
 
+        var totalCount = await query.CountAsync(ct);
+
         var items = await query
             .Include(b => b.Category)
             .Include(b => b.BlogPostTags).ThenInclude(bpt => bpt.Tag)
@@ -51,10 +53,11 @@ public class BlogService(IAppDbContext dbContext) : IBlogService
 
         var dtos = items.Select(BuildDto).ToList();
 
-        return Result<IReadOnlyList<BlogPostDto>>.Success(dtos);
+        return Result<PaginatedResult<BlogPostDto>>.Success(
+            PaginatedResult<BlogPostDto>.Create(dtos, totalCount, q.PageNumber, q.PageSize));
     }
 
-    public async Task<Result<IReadOnlyList<BlogPostDto>>> GetAllManagedAsync(BlogPostQueryParameters q, CancellationToken ct)
+    public async Task<Result<PaginatedResult<BlogPostDto>>> GetAllManagedAsync(BlogPostQueryParameters q, CancellationToken ct)
     {
         IQueryable<BlogPost> query = dbContext.BlogPosts;
 
@@ -72,6 +75,8 @@ public class BlogService(IAppDbContext dbContext) : IBlogService
         if (q.TagId.HasValue)
             query = query.Where(b => b.BlogPostTags.Any(bpt => bpt.TagId == q.TagId));
 
+        var totalCount = await query.CountAsync(ct);
+
         var items = await query
             .Include(b => b.Category)
             .Include(b => b.BlogPostTags).ThenInclude(bpt => bpt.Tag)
@@ -82,7 +87,8 @@ public class BlogService(IAppDbContext dbContext) : IBlogService
 
         var dtos = items.Select(BuildDto).ToList();
 
-        return Result<IReadOnlyList<BlogPostDto>>.Success(dtos);
+        return Result<PaginatedResult<BlogPostDto>>.Success(
+            PaginatedResult<BlogPostDto>.Create(dtos, totalCount, q.PageNumber, q.PageSize));
     }
 
     public async Task<Result<BlogPostDto>> GetBySlugAsync(string slug, bool isAdmin, CancellationToken ct)
