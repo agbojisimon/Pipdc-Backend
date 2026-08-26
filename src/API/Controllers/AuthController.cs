@@ -70,6 +70,18 @@ public class AuthController(IAuthService authService) : ControllerBase
         return result.ToActionResult();
     }
 
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+        if (userId is null)
+            return Unauthorized();
+
+        var result = await authService.ChangePasswordAsync(userId, request, ct);
+        return result.ToActionResult();
+    }
+
     [Authorize(Roles = Roles.Admin)]
     [HttpPost("add-role")]
     public async Task<IActionResult> AddRole([FromBody] AddRoleRequest request, CancellationToken ct)

@@ -11,6 +11,7 @@ public interface IAuthService
     Task<Result<CurrentUserDto>> GetMeAsync(string userId, CancellationToken ct);
     Task<Result<CurrentUserDto>> UpdateProfileAsync(string userId, UpdateProfileRequest request, CancellationToken ct);
     Task<Result> ForgotPasswordAsync(string email, CancellationToken ct);
+    Task<Result> ChangePasswordAsync(string userId, ChangePasswordRequest request, CancellationToken ct);
     Task<Result> AddRoleAsync(AddRoleRequest request, CancellationToken ct);
     Task<Result> RemoveRoleAsync(RemoveRoleRequest request, CancellationToken ct);
 }

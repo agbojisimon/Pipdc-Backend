@@ -26,6 +26,8 @@ public class DashboardService(
         var totalAgents = await dbContext.Agents.CountAsync(ct);
         var totalEnquiries = await dbContext.Enquiries.CountAsync(ct);
         var totalUsers = await userManager.Users.CountAsync(ct);
+        var totalDevelopmentProjects = await dbContext.DevelopmentProjects.CountAsync(ct);
+        var totalBlogPosts = await dbContext.BlogPosts.CountAsync(ct);
 
         var properties = await propertyService.GetAllAsync(
             new PropertyQueryParameters { PageSize = 5 }, currentUserId, ct);
@@ -42,6 +44,8 @@ public class DashboardService(
             totalAgents,
             totalEnquiries,
             totalUsers,
+            totalDevelopmentProjects,
+            totalBlogPosts,
             properties.Value.Items,
             enquiries.Value.Items));
     }
