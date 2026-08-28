@@ -14,6 +14,15 @@ public record LoginRequest(
 public record RefreshRequest(string RefreshToken);
 public record RevokeRequest(string RefreshToken);
 public record ForgotPasswordRequest(string Email);
+public record VerifyEmailRequest(
+    [Required, EmailAddress, MaxLength(256)] string Email,
+    [Required, StringLength(6, MinimumLength = 6)] string Code);
+public record ResendVerificationRequest(
+    [Required, EmailAddress, MaxLength(256)] string Email);
+public record ResetPasswordRequest(
+    [Required, EmailAddress, MaxLength(256)] string Email,
+    [Required, StringLength(6, MinimumLength = 6)] string Code,
+    [Required, MinLength(8)] string NewPassword);
 public record AddRoleRequest(string Email, string Role);
 public record RemoveRoleRequest(string Email, string Role);
 

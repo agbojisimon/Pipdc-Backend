@@ -325,6 +325,136 @@ public static class EmailTemplates
 
     // ── Helper ───────────────────────────────────────────────────────────
 
+    // ── 7. Email verification code → User ──────────────────────────────
+
+    public static EmailMessage EmailVerification(
+        string recipientEmail,
+        string recipientName,
+        string code,
+        int expiryMinutes,
+        string baseUrl)
+    {
+        var ctaUrl = $"{baseUrl}/verify-email";
+        var subject = "Verify your PIPDC account";
+
+        var html = $"""
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#333">
+          <h2 style="color:#1a5276">Verify your email</h2>
+          <p>Hi <strong>{Esc(recipientName)}</strong>,</p>
+          <p>Enter the 6-digit code below to confirm your PIPDC account.</p>
+          <div style="margin:20px 0;padding:16px;background:#f0f7f4;border:1px dashed #1a5276;border-radius:8px;font-size:28px;font-weight:bold;letter-spacing:8px;text-align:center;color:#1a5276">{code}</div>
+          <p style="font-size:13px;color:#666">This code expires in {expiryMinutes} minutes. If you did not create an account, you can safely ignore this email.</p>
+          <a href="{ctaUrl}" style="display:inline-block;padding:12px 24px;background:#1a5276;color:#fff;text-decoration:none;border-radius:4px;margin:8px 0">Enter my code</a>
+          <p style="font-size:12px;color:#888;margin-top:20px">This is an automated security message from {BrandName}.</p>
+        </div>
+        """;
+
+        var text = $"""
+        Verify your email
+
+        Hi {recipientName},
+
+        Enter the 6-digit code below to confirm your PIPDC account.
+
+        Your code: {code}
+
+        This code expires in {expiryMinutes} minutes.
+        If you did not create an account, you can safely ignore this email.
+
+        Enter your code here: {ctaUrl}
+
+        ---
+        This is an automated security message from {BrandName}.
+        """;
+
+        return new EmailMessage(recipientEmail, subject, html, recipientName, text);
+    }
+
+    // ── 8. Password reset code → User ──────────────────────────────────
+
+    public static EmailMessage PasswordReset(
+        string recipientEmail,
+        string recipientName,
+        string code,
+        int expiryMinutes,
+        string baseUrl)
+    {
+        var ctaUrl = $"{baseUrl}/reset-password";
+        var subject = "Reset your PIPDC password";
+
+        var html = $"""
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#333">
+          <h2 style="color:#1a5276">Reset your password</h2>
+          <p>Hi <strong>{Esc(recipientName)}</strong>,</p>
+          <p>We received a request to reset your PIPDC password. Enter the 6-digit code below, then choose a new password.</p>
+          <div style="margin:20px 0;padding:16px;background:#f0f7f4;border:1px dashed #1a5276;border-radius:8px;font-size:28px;font-weight:bold;letter-spacing:8px;text-align:center;color:#1a5276">{code}</div>
+          <p style="font-size:13px;color:#666">This code expires in {expiryMinutes} minutes. If you did not request a reset, you can safely ignore this email.</p>
+          <a href="{ctaUrl}" style="display:inline-block;padding:12px 24px;background:#1a5276;color:#fff;text-decoration:none;border-radius:4px;margin:8px 0">Reset my password</a>
+          <p style="font-size:12px;color:#888;margin-top:20px">This is an automated security message from {BrandName}.</p>
+        </div>
+        """;
+
+        var text = $"""
+        Reset your password
+
+        Hi {recipientName},
+
+        We received a request to reset your PIPDC password. Enter the 6-digit code below, then choose a new password.
+
+        Your code: {code}
+
+        This code expires in {expiryMinutes} minutes.
+        If you did not request a reset, you can safely ignore this email.
+
+        Reset your password here: {ctaUrl}
+
+        ---
+        This is an automated security message from {BrandName}.
+        """;
+
+        return new EmailMessage(recipientEmail, subject, html, recipientName, text);
+    }
+
+    // ── 9. Password changed notification → User ─────────────────────────
+
+    public static EmailMessage PasswordChangedNotification(
+        string recipientEmail,
+        string recipientName,
+        string baseUrl)
+    {
+        var ctaUrl = $"{baseUrl}/forgot-password";
+        var subject = "Your PIPDC password was changed";
+
+        var html = $"""
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#333">
+          <h2 style="color:#1a5276">Your password was changed</h2>
+          <p>Hi <strong>{Esc(recipientName)}</strong>,</p>
+          <p>Your PIPDC account password was changed. If this was you, no further action is needed.</p>
+          <p style="font-size:13px;color:#666">If you did NOT make this change, secure your account immediately by resetting your password.</p>
+          <a href="{ctaUrl}" style="display:inline-block;padding:12px 24px;background:#1a5276;color:#fff;text-decoration:none;border-radius:4px;margin:8px 0">Reset my password</a>
+          <p style="font-size:12px;color:#888;margin-top:20px">This is an automated security message from {BrandName}.</p>
+        </div>
+        """;
+
+        var text = $"""
+        Your password was changed
+
+        Hi {recipientName},
+
+        Your PIPDC account password was changed. If this was you, no further action is needed.
+
+        If you did NOT make this change, secure your account immediately:
+        {ctaUrl}
+
+        ---
+        This is an automated security message from {BrandName}.
+        """;
+
+        return new EmailMessage(recipientEmail, subject, html, recipientName, text);
+    }
+
+    // ── Helper ───────────────────────────────────────────────────────────
+
     private static string Esc(string value) =>
         System.Net.WebUtility.HtmlEncode(value);
 }
