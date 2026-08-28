@@ -17,10 +17,6 @@ public class GmailApiEmailService(
     {
         var settings = options.Value;
 
-        // Ensure the templates have the sender address for mailto: unsubscribe links.
-        if (string.IsNullOrWhiteSpace(EmailTemplates.UnsubscribeEmail))
-            EmailTemplates.UnsubscribeEmail = settings.SenderEmail;
-
         try
         {
             var gmail = CreateGmailService(settings);
@@ -33,8 +29,11 @@ public class GmailApiEmailService(
             mimeMessage.From.Add(new MailboxAddress(settings.SenderName, settings.SenderEmail));
             mimeMessage.To.Add(new MailboxAddress(message.ToName, message.To));
 
-            mimeMessage.Headers.Add("List-Unsubscribe", $"<mailto:{settings.SenderEmail}?subject=Unsubscribe>");
-            mimeMessage.Headers.Add("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+            if (message.IncludeUnsubscribe)
+            {
+                mimeMessage.Headers.Add("List-Unsubscribe", $"<mailto:{settings.SenderEmail}?subject=Unsubscribe>");
+                mimeMessage.Headers.Add("List-Unsubscribe-Post", "List-Unsubscribe=One-Click");
+            }
 
             var body = new BodyBuilder { HtmlBody = message.HtmlBody };
 
