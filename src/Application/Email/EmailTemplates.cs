@@ -9,12 +9,6 @@ public static class EmailTemplates
 {
     private const string BrandName = "PIPDC";
 
-    /// <summary>
-    /// Set once at startup from <c>GmailApiSettings.SenderEmail</c> so that
-    /// unsubscribe mailto: links can reference the sender address.
-    /// </summary>
-    public static string UnsubscribeEmail { get; set; } = string.Empty;
-
     // ── 1. New enquiry → Agent ───────────────────────────────────────────
 
     public static EmailMessage NewEnquiryToAgent(
@@ -28,8 +22,6 @@ public static class EmailTemplates
     {
         var ctaUrl = $"{baseUrl}/enquiries/{enquiryId}";
         var subject = $"New enquiry about {propertyTitle}";
-        var unsubscribe = $"mailto:{UnsubscribeEmail}?subject=Unsubscribe";
-
         var html = $"""
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#333">
           <h2 style="color:#1a5276">New Property Enquiry</h2>
@@ -39,7 +31,7 @@ public static class EmailTemplates
             {Esc(clientMessage)}
           </blockquote>
           <a href="{ctaUrl}" style="display:inline-block;padding:12px 24px;background:#1a5276;color:#fff;text-decoration:none;border-radius:4px;margin:16px 0">View &amp; Reply to Enquiry</a>
-          <p style="font-size:12px;color:#888;margin-top:24px">This is an automated notification from {BrandName}.<br><a href="{unsubscribe}">Unsubscribe</a></p>
+          <p style="font-size:12px;color:#888;margin-top:24px">This is an automated notification from {BrandName}.</p>
         </div>
         """;
 
@@ -57,10 +49,9 @@ public static class EmailTemplates
 
         ---
         This is an automated notification from {BrandName}.
-        Unsubscribe: {unsubscribe}
         """;
 
-        return new EmailMessage(agentEmail, subject, html, agentName, text);
+        return new EmailMessage(agentEmail, subject, html, agentName, text) { IncludeUnsubscribe = false };
     }
 
     // ── 2. Agent reply → Client ──────────────────────────────────────────
@@ -76,8 +67,6 @@ public static class EmailTemplates
     {
         var ctaUrl = $"{baseUrl}/enquiries/{enquiryId}";
         var subject = $"{agentName} replied to your enquiry about {propertyTitle}";
-        var unsubscribe = $"mailto:{UnsubscribeEmail}?subject=Unsubscribe";
-
         var html = $"""
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#333">
           <h2 style="color:#1a5276">New Reply</h2>
@@ -87,7 +76,7 @@ public static class EmailTemplates
             {Esc(messagePreview)}
           </blockquote>
           <a href="{ctaUrl}" style="display:inline-block;padding:12px 24px;background:#1a5276;color:#fff;text-decoration:none;border-radius:4px;margin:16px 0">View &amp; Reply to Enquiry</a>
-          <p style="font-size:12px;color:#888;margin-top:24px">This is an automated notification from {BrandName}.<br><a href="{unsubscribe}">Unsubscribe</a></p>
+          <p style="font-size:12px;color:#888;margin-top:24px">This is an automated notification from {BrandName}.</p>
         </div>
         """;
 
@@ -105,10 +94,9 @@ public static class EmailTemplates
 
         ---
         This is an automated notification from {BrandName}.
-        Unsubscribe: {unsubscribe}
         """;
 
-        return new EmailMessage(clientEmail, subject, html, clientName, text);
+        return new EmailMessage(clientEmail, subject, html, clientName, text) { IncludeUnsubscribe = false };
     }
 
     // ── 3. Client reply → Agent ──────────────────────────────────────────
@@ -124,8 +112,6 @@ public static class EmailTemplates
     {
         var ctaUrl = $"{baseUrl}/enquiries/{enquiryId}";
         var subject = $"{clientName} replied to their enquiry about {propertyTitle}";
-        var unsubscribe = $"mailto:{UnsubscribeEmail}?subject=Unsubscribe";
-
         var html = $"""
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#333">
           <h2 style="color:#1a5276">New Reply</h2>
@@ -135,7 +121,7 @@ public static class EmailTemplates
             {Esc(messagePreview)}
           </blockquote>
           <a href="{ctaUrl}" style="display:inline-block;padding:12px 24px;background:#1a5276;color:#fff;text-decoration:none;border-radius:4px;margin:16px 0">View &amp; Reply to Enquiry</a>
-          <p style="font-size:12px;color:#888;margin-top:24px">This is an automated notification from {BrandName}.<br><a href="{unsubscribe}">Unsubscribe</a></p>
+          <p style="font-size:12px;color:#888;margin-top:24px">This is an automated notification from {BrandName}.</p>
         </div>
         """;
 
@@ -153,10 +139,9 @@ public static class EmailTemplates
 
         ---
         This is an automated notification from {BrandName}.
-        Unsubscribe: {unsubscribe}
         """;
 
-        return new EmailMessage(agentEmail, subject, html, agentName, text);
+        return new EmailMessage(agentEmail, subject, html, agentName, text) { IncludeUnsubscribe = false };
     }
 
     // ── 4. Viewing scheduled → Client + Agent ────────────────────────────
@@ -170,8 +155,6 @@ public static class EmailTemplates
     {
         var ctaUrl = $"{baseUrl}/enquiries/{enquiryId}";
         var subject = $"Viewing scheduled for {propertyTitle}";
-        var unsubscribe = $"mailto:{UnsubscribeEmail}?subject=Unsubscribe";
-
         var html = $"""
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#333">
           <h2 style="color:#1a5276">Viewing Scheduled</h2>
@@ -179,7 +162,7 @@ public static class EmailTemplates
           <p>A viewing has been scheduled for <strong>{Esc(propertyTitle)}</strong>.</p>
           <p>Please check your conversation for further details from the agent.</p>
           <a href="{ctaUrl}" style="display:inline-block;padding:12px 24px;background:#1a5276;color:#fff;text-decoration:none;border-radius:4px;margin:16px 0">View Enquiry</a>
-          <p style="font-size:12px;color:#888;margin-top:24px">This is an automated notification from {BrandName}.<br><a href="{unsubscribe}">Unsubscribe</a></p>
+          <p style="font-size:12px;color:#888;margin-top:24px">This is an automated notification from {BrandName}.</p>
         </div>
         """;
 
@@ -195,10 +178,9 @@ public static class EmailTemplates
 
         ---
         This is an automated notification from {BrandName}.
-        Unsubscribe: {unsubscribe}
         """;
 
-        return new EmailMessage(clientEmail, subject, html, clientName, text);
+        return new EmailMessage(clientEmail, subject, html, clientName, text) { IncludeUnsubscribe = false };
     }
 
     public static EmailMessage ViewingScheduledToAgent(
@@ -211,15 +193,13 @@ public static class EmailTemplates
     {
         var ctaUrl = $"{baseUrl}/enquiries/{enquiryId}";
         var subject = $"Viewing scheduled for {propertyTitle}";
-        var unsubscribe = $"mailto:{UnsubscribeEmail}?subject=Unsubscribe";
-
         var html = $"""
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#333">
           <h2 style="color:#1a5276">Viewing Scheduled</h2>
           <p>Hi <strong>{Esc(agentName)}</strong>,</p>
           <p>A viewing has been scheduled with <strong>{Esc(clientName)}</strong> for <strong>{Esc(propertyTitle)}</strong>.</p>
           <a href="{ctaUrl}" style="display:inline-block;padding:12px 24px;background:#1a5276;color:#fff;text-decoration:none;border-radius:4px;margin:16px 0">View Enquiry</a>
-          <p style="font-size:12px;color:#888;margin-top:24px">This is an automated notification from {BrandName}.<br><a href="{unsubscribe}">Unsubscribe</a></p>
+          <p style="font-size:12px;color:#888;margin-top:24px">This is an automated notification from {BrandName}.</p>
         </div>
         """;
 
@@ -234,10 +214,9 @@ public static class EmailTemplates
 
         ---
         This is an automated notification from {BrandName}.
-        Unsubscribe: {unsubscribe}
         """;
 
-        return new EmailMessage(agentEmail, subject, html, agentName, text);
+        return new EmailMessage(agentEmail, subject, html, agentName, text) { IncludeUnsubscribe = false };
     }
 
     // ── 5. Enquiry resolved → Client ─────────────────────────────────────
@@ -251,8 +230,6 @@ public static class EmailTemplates
     {
         var ctaUrl = $"{baseUrl}/enquiries/{enquiryId}";
         var subject = $"Your enquiry about {propertyTitle} has been resolved";
-        var unsubscribe = $"mailto:{UnsubscribeEmail}?subject=Unsubscribe";
-
         var html = $"""
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#333">
           <h2 style="color:#1a5276">Enquiry Resolved</h2>
@@ -260,7 +237,7 @@ public static class EmailTemplates
           <p>Your enquiry about <strong>{Esc(propertyTitle)}</strong> has been marked as resolved.</p>
           <p>If you have any further questions, feel free to submit a new enquiry.</p>
           <a href="{ctaUrl}" style="display:inline-block;padding:12px 24px;background:#1a5276;color:#fff;text-decoration:none;border-radius:4px;margin:16px 0">View Enquiry</a>
-          <p style="font-size:12px;color:#888;margin-top:24px">This is an automated notification from {BrandName}.<br><a href="{unsubscribe}">Unsubscribe</a></p>
+          <p style="font-size:12px;color:#888;margin-top:24px">This is an automated notification from {BrandName}.</p>
         </div>
         """;
 
@@ -276,10 +253,9 @@ public static class EmailTemplates
 
         ---
         This is an automated notification from {BrandName}.
-        Unsubscribe: {unsubscribe}
         """;
 
-        return new EmailMessage(clientEmail, subject, html, clientName, text);
+        return new EmailMessage(clientEmail, subject, html, clientName, text) { IncludeUnsubscribe = false };
     }
 
     // ── 6. Admin notifies Agent ──────────────────────────────────────────
@@ -294,15 +270,13 @@ public static class EmailTemplates
     {
         var ctaUrl = $"{baseUrl}/enquiries/{enquiryId}";
         var subject = $"Enquiry from {clientName} about {propertyTitle} needs your attention";
-        var unsubscribe = $"mailto:{UnsubscribeEmail}?subject=Unsubscribe";
-
         var html = $"""
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#333">
           <h2 style="color:#1a5276">Enquiry Reminder</h2>
           <p>Hi <strong>{Esc(agentName)}</strong>,</p>
           <p>An admin has flagged the enquiry from <strong>{Esc(clientName)}</strong> regarding <strong>{Esc(propertyTitle)}</strong> for your attention.</p>
           <a href="{ctaUrl}" style="display:inline-block;padding:12px 24px;background:#1a5276;color:#fff;text-decoration:none;border-radius:4px;margin:16px 0">View &amp; Reply to Enquiry</a>
-          <p style="font-size:12px;color:#888;margin-top:24px">This is an automated notification from {BrandName}.<br><a href="{unsubscribe}">Unsubscribe</a></p>
+          <p style="font-size:12px;color:#888;margin-top:24px">This is an automated notification from {BrandName}.</p>
         </div>
         """;
 
@@ -317,10 +291,9 @@ public static class EmailTemplates
 
         ---
         This is an automated notification from {BrandName}.
-        Unsubscribe: {unsubscribe}
         """;
 
-        return new EmailMessage(agentEmail, subject, html, agentName, text);
+        return new EmailMessage(agentEmail, subject, html, agentName, text) { IncludeUnsubscribe = false };
     }
 
     // ── Helper ───────────────────────────────────────────────────────────
