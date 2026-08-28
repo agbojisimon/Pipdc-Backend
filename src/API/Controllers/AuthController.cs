@@ -46,6 +46,27 @@ public class AuthController(IAuthService authService) : ControllerBase
         return result.ToActionResult();
     }
 
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request, CancellationToken ct)
+    {
+        var result = await authService.VerifyEmailAsync(request, ct);
+        return result.ToActionResult();
+    }
+
+    [HttpPost("resend-verification")]
+    public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request, CancellationToken ct)
+    {
+        var result = await authService.ResendVerificationEmailAsync(request.Email, ct);
+        return result.ToActionResult();
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken ct)
+    {
+        var result = await authService.ResetPasswordAsync(request, ct);
+        return result.ToActionResult();
+    }
+
     [Authorize]
     [HttpGet("me")]
     public async Task<IActionResult> Me(CancellationToken ct)

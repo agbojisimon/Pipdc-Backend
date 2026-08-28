@@ -37,6 +37,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<SavedProperty> SavedProperties => Set<SavedProperty>();
     public DbSet<AiChatSession> AiChatSessions => Set<AiChatSession>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<VerificationCode> VerificationCodes => Set<VerificationCode>();
     public DbSet<DevelopmentProject> DevelopmentProjects => Set<DevelopmentProject>();
     public DbSet<DevelopmentUnit> DevelopmentUnits => Set<DevelopmentUnit>();
     public DbSet<DevelopmentUpdate> DevelopmentUpdates => Set<DevelopmentUpdate>();

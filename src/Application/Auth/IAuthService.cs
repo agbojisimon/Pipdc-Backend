@@ -12,6 +12,9 @@ public interface IAuthService
     Task<Result<CurrentUserDto>> UpdateProfileAsync(string userId, UpdateProfileRequest request, CancellationToken ct);
     Task<Result> ForgotPasswordAsync(string email, CancellationToken ct);
     Task<Result> ChangePasswordAsync(string userId, ChangePasswordRequest request, CancellationToken ct);
+    Task<Result> VerifyEmailAsync(VerifyEmailRequest request, CancellationToken ct);
+    Task<Result> ResendVerificationEmailAsync(string email, CancellationToken ct);
+    Task<Result> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken ct);
     Task<Result> AddRoleAsync(AddRoleRequest request, CancellationToken ct);
     Task<Result> RemoveRoleAsync(RemoveRoleRequest request, CancellationToken ct);
 }
