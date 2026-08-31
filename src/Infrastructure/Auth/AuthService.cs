@@ -55,13 +55,23 @@ public class AuthService(
     public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request, CancellationToken ct)
     {
         var user = await userManager.FindByEmailAsync(request.Email);
+
+        if (user is not null && await userManager.IsLockedOutAsync(user))
+            return Result<AuthResponse>.Failure(Error.Unauthorized("ACCOUNT_LOCKED", "Too many failed attempts. Try again later."));
+
         if (user is null || !await userManager.CheckPasswordAsync(user, request.Password))
-            return Result<AuthResponse>.Failure(Error.Unauthorized("INVALID_CREDENTIALS", "Invalid credentials."));
+        {
+            if (user is not null)
+                await userManager.AccessFailedAsync(user);
+
+            return Result<AuthResponse>.Failure(Error.Unauthorized("INVALID_CREDENTIALS", "Invalid email or password."));
+        }
 
         if (!user.EmailConfirmed)
             return Result<AuthResponse>.Failure(Error.Validation("EMAIL_NOT_CONFIRMED",
                 "Please verify your email before signing in. We have sent you a verification code."));
 
+        await userManager.ResetAccessFailedCountAsync(user);
         return await BuildAuthResponseAsync(user, ct);
     }
 

@@ -27,6 +27,12 @@ public static class DependencyInjection
         services.AddIdentity<AppUser, IdentityRole>(options =>
             {
                 options.Password.RequiredLength = 8;
+                options.Password.RequireNonAlphanumeric = true;
+
+                // Lockout settings
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
             })
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
@@ -77,31 +83,23 @@ public static class DependencyInjection
                 };
             });
 
-        var allowedOrigins = config.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
-        if (allowedOrigins.Length == 0 && config.GetSection("Cors:AllowedOrigin").Exists())
-            allowedOrigins = [config["Cors:AllowedOrigin"]!];
+        var allowedOrigins = config.GetSection("Cors:AllowedOrigins").Get<string[]>()
+            ?? Array.Empty<string>();
+
+        if (allowedOrigins.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "Cors:AllowedOrigins is not configured. Add allowed origins " +
+                "(e.g. \"http://localhost:5173\") to appsettings.Development.json " +
+                "or the Cors__AllowedOrigins__* environment variables.");
+        }
 
         services.AddCors(options =>
-        {
             options.AddPolicy("AllowFrontend", policy =>
-            {
-                if (allowedOrigins.Length == 0)
-                {
-                    // Development fallback only.
-                    policy.SetIsOriginAllowed(_ => true)
-                        .AllowAnyHeader()
-                        .AllowAnyMethod()
-                        .AllowCredentials();
-                }
-                else
-                {
-                    policy.WithOrigins(allowedOrigins)
-                        .AllowAnyHeader()
-                        .AllowAnyMethod()
-                        .AllowCredentials();
-                }
-            });
-        });
+                policy.WithOrigins(allowedOrigins)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials()));
 
         services.AddAuthorization();
 
