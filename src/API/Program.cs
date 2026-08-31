@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
-using Microsoft.Extensions.Primitives;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -75,6 +74,10 @@ app.Use(async (context, next) =>
     headers["X-Frame-Options"] = "DENY";
     headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
     headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
+
+    headers["Content-Security-Policy"] =
+       "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+
     await next();
 });
 
