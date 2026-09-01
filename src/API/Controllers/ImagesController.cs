@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using PIPDC.Application.Services;
+using PIPDC.Infrastructure.RateLimiting;
 
 namespace PIPDC.API.Controllers;
 
@@ -24,6 +26,7 @@ public class ImagesController : ControllerBase
 
     [Authorize]
     [HttpPost("upload")]
+    [EnableRateLimiting(RateLimitPolicies.Uploads)]
     public async Task<IActionResult> Upload(
         [FromForm] IFormFile file,
         [FromQuery] string folder = "general",

@@ -1,3 +1,5 @@
+using System.Net;
+using Microsoft.AspNetCore.HttpOverrides;
 using PIPDC.API.Extensions;
 using PIPDC.API.Hubs;
 using PIPDC.Application;
@@ -63,6 +65,17 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 
+// Forward X-Forwarded-For / -Proto headers from the reverse proxy so that
+// RemoteIpAddress reflects the real client IP. Required so the rate limiter can
+// partition anonymous callers by their true IP and not the proxy's. Placed as early
+// as possible (immediately after error handling) so downstream middleware reads the
+// corrected IP.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+    KnownNetworks = { new Microsoft.AspNetCore.HttpOverrides.IPNetwork(IPAddress.Loopback, 8) }
+});
+
 // Security headers: HSTS (https-only responses) + hardening headers for every API
 // response. They are set for every request so error paths are covered too.
 app.UseHsts();
@@ -92,6 +105,10 @@ app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
+// Rate limiting must run AFTER authentication so the global limiter can partition by
+// the authenticated user's id, and BEFORE authorization so a rejected request is not
+// even considered for authorization.
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllers();

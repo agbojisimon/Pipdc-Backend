@@ -12,6 +12,7 @@ using PIPDC.Infrastructure.Auth;
 using PIPDC.Domain.Entities;
 using PIPDC.Infrastructure.Data;
 using PIPDC.Infrastructure.Email;
+using PIPDC.Infrastructure.RateLimiting;
 
 namespace PIPDC.Infrastructure;
 
@@ -108,6 +109,8 @@ public static class DependencyInjection
 
         services.Configure<GmailApiSettings>(config.GetSection("GmailApiSettings"));
         services.AddScoped<IEmailService, GmailApiEmailService>();
+
+        services.AddRateLimiting();
 
         return services;
     }

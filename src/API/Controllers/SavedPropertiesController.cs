@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.JsonWebTokens;
 using PIPDC.API.Extensions;
 using PIPDC.Application.SavedProperties;
+using PIPDC.Infrastructure.RateLimiting;
 
 namespace PIPDC.API.Controllers;
 
@@ -29,6 +31,7 @@ public class SavedPropertiesController(ISavedPropertyService savedPropertyServic
     }
 
     [HttpPost("{propertyId:int}")]
+    [EnableRateLimiting(RateLimitPolicies.Writes)]
     public async Task<IActionResult> Save(int propertyId, CancellationToken ct)
     {
         var result = await savedPropertyService.SaveAsync(CurrentUserId, propertyId, ct);
@@ -36,6 +39,7 @@ public class SavedPropertiesController(ISavedPropertyService savedPropertyServic
     }
 
     [HttpDelete("{propertyId:int}")]
+    [EnableRateLimiting(RateLimitPolicies.Writes)]
     public async Task<IActionResult> Unsave(int propertyId, CancellationToken ct)
     {
         var result = await savedPropertyService.UnsaveAsync(CurrentUserId, propertyId, ct);

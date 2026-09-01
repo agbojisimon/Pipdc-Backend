@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.JsonWebTokens;
 using PIPDC.API.Extensions;
 using PIPDC.Application.Developments;
+using PIPDC.Infrastructure.RateLimiting;
 
 namespace PIPDC.API.Controllers;
 
@@ -22,6 +24,7 @@ public class DevelopmentTrackingController(IDevelopmentTrackingService trackingS
     }
 
     [HttpPost]
+    [EnableRateLimiting(RateLimitPolicies.Writes)]
     public async Task<IActionResult> Track([FromBody] TrackProjectRequest request, CancellationToken ct)
     {
         var result = await trackingService.TrackAsync(CurrentUserId, request.ProjectId, request.UnitId, ct);
@@ -29,6 +32,7 @@ public class DevelopmentTrackingController(IDevelopmentTrackingService trackingS
     }
 
     [HttpDelete("{projectId:int}")]
+    [EnableRateLimiting(RateLimitPolicies.Writes)]
     public async Task<IActionResult> StopTracking(int projectId, CancellationToken ct)
     {
         var result = await trackingService.StopTrackingAsync(CurrentUserId, projectId, ct);

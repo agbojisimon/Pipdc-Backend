@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.JsonWebTokens;
 using PIPDC.API.Extensions;
 using PIPDC.Application.Conversations;
+using PIPDC.Infrastructure.RateLimiting;
 
 namespace PIPDC.API.Controllers;
 
@@ -24,6 +26,7 @@ public class MessagesController(IMessageService messageService) : ControllerBase
     }
 
     [HttpPost]
+    [EnableRateLimiting(RateLimitPolicies.Writes)]
     public async Task<IActionResult> Send(int conversationId, [FromBody] SendMessageRequest request, CancellationToken ct)
     {
         var result = await messageService.SendAsync(conversationId, request, CurrentUserId, ct);
@@ -35,6 +38,7 @@ public class MessagesController(IMessageService messageService) : ControllerBase
     }
 
     [HttpPost("~/api/enquiries/{enquiryId:int}/messages")]
+    [EnableRateLimiting(RateLimitPolicies.Writes)]
     public async Task<IActionResult> SendByEnquiry(int enquiryId, [FromBody] SendMessageRequest request, CancellationToken ct)
     {
         var result = await messageService.SendByEnquiryAsync(enquiryId, request, CurrentUserId, ct);
@@ -46,6 +50,7 @@ public class MessagesController(IMessageService messageService) : ControllerBase
     }
 
     [HttpPost("read")]
+    [EnableRateLimiting(RateLimitPolicies.Writes)]
     public async Task<IActionResult> MarkRead(int conversationId, CancellationToken ct)
     {
         var result = await messageService.MarkReadAsync(conversationId, CurrentUserId, CurrentUserRoles, ct);
