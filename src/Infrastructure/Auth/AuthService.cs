@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -25,6 +26,9 @@ public class AuthService(
     IHostEnvironment hostEnvironment,
     ILogger<AuthService> logger) : IAuthService
 {
+    private static string HashToken(string raw) =>
+        Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(raw)));
+
     private const int CodeLength = 6;
     private static readonly TimeSpan CodeLifetime = TimeSpan.FromMinutes(15);
     private const int MaxAttempts = 5;
@@ -78,7 +82,7 @@ public class AuthService(
     public async Task<Result<AuthResponse>> RefreshAsync(RefreshRequest request, CancellationToken ct)
     {
         var storedToken = await dbContext.RefreshTokens
-            .FirstOrDefaultAsync(t => t.Token == request.RefreshToken, ct);
+            .FirstOrDefaultAsync(t => t.Token == HashToken(request.RefreshToken), ct);
 
         if (storedToken is null)
             return Result<AuthResponse>.Failure(Error.Unauthorized("INVALID_REFRESH_TOKEN", "Invalid refresh token."));
@@ -94,14 +98,15 @@ public class AuthService(
         storedToken.Revoked = DateTime.UtcNow;
 
         var newRefreshToken = tokenService.CreateRefreshToken();
+        var newHash = HashToken(newRefreshToken);
         dbContext.RefreshTokens.Add(new RefreshToken
         {
-            Token = newRefreshToken,
+            Token = newHash,
             UserId = storedToken.UserId,
             CreatedAt = DateTime.UtcNow,
             Expires = DateTime.UtcNow.AddDays(jwtOptions.Value.RefreshTokenDays)
         });
-        storedToken.ReplacedByToken = newRefreshToken;
+        storedToken.ReplacedByToken = newHash;
         await dbContext.SaveChangesAsync(ct);
 
         var user = await userManager.FindByIdAsync(storedToken.UserId);
@@ -111,7 +116,7 @@ public class AuthService(
     public async Task<Result> RevokeAsync(RevokeRequest request, CancellationToken ct)
     {
         var storedToken = await dbContext.RefreshTokens
-            .FirstOrDefaultAsync(t => t.Token == request.RefreshToken, ct);
+            .FirstOrDefaultAsync(t => t.Token == HashToken(request.RefreshToken), ct);
 
         if (storedToken is null || !storedToken.IsActive)
             return Result.Failure(Error.NotFound("TOKEN_NOT_FOUND", "Token not found or already inactive."));
@@ -364,7 +369,7 @@ public class AuthService(
         var refreshToken = tokenService.CreateRefreshToken();
         dbContext.RefreshTokens.Add(new RefreshToken
         {
-            Token = refreshToken,
+            Token = HashToken(refreshToken),
             UserId = user.Id,
             CreatedAt = DateTime.UtcNow,
             Expires = DateTime.UtcNow.AddDays(jwtOptions.Value.RefreshTokenDays)

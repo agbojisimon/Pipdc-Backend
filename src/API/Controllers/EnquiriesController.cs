@@ -20,6 +20,7 @@ public class EnquiriesController(IEnquiryService enquiryService) : ControllerBas
 
     [Authorize]
     [HttpPost]
+    [RequestSizeLimit(100_000)]
     [EnableRateLimiting(RateLimitPolicies.Writes)]
     public async Task<IActionResult> Create([FromBody] CreateEnquiryRequest request, CancellationToken ct)
     {
