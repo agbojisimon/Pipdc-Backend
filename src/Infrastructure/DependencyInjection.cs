@@ -58,6 +58,8 @@ public static class DependencyInjection
                     ValidIssuer = jwtSettings.Issuer,
                     ValidAudience = jwtSettings.Audience,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
+                    ValidTypes = new[] { "JWT" },
+                    RequireExpirationTime = true,
                     ClockSkew = TimeSpan.Zero,
                     NameClaimType = "name",
                     RoleClaimType = "role"

@@ -26,6 +26,7 @@ public class MessagesController(IMessageService messageService) : ControllerBase
     }
 
     [HttpPost]
+    [RequestSizeLimit(100_000)]
     [EnableRateLimiting(RateLimitPolicies.Writes)]
     public async Task<IActionResult> Send(int conversationId, [FromBody] SendMessageRequest request, CancellationToken ct)
     {
@@ -38,6 +39,7 @@ public class MessagesController(IMessageService messageService) : ControllerBase
     }
 
     [HttpPost("~/api/enquiries/{enquiryId:int}/messages")]
+    [RequestSizeLimit(100_000)]
     [EnableRateLimiting(RateLimitPolicies.Writes)]
     public async Task<IActionResult> SendByEnquiry(int enquiryId, [FromBody] SendMessageRequest request, CancellationToken ct)
     {

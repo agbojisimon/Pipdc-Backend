@@ -16,6 +16,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
+// Global request body cap: 10 MB matches the image cap, well above the small JSON
+// bodies the API accepts, and far below Kestrel's default 30 MB.
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 10 * 1024 * 1024;
+});
+
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IUserIdProvider, JwtSubUserIdProvider>();
@@ -55,8 +62,15 @@ var app = builder.Build();
 
 using var scope = app.Services.CreateScope();
 var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-await dbContext.Database.MigrateAsync();
-await RoleSeeder.SeedAsync(scope.ServiceProvider);
+
+// Auto-migrate only outside Production: a failed block on a live deploy is an
+// availability risk, and multiple instances racing the same migration are a
+// concurrency hazard. Production uses controlled migrations.
+if (!app.Environment.IsProduction())
+{
+    await dbContext.Database.MigrateAsync();
+    await RoleSeeder.SeedAsync(scope.ServiceProvider);
+}
 
 if (app.Environment.IsDevelopment())
 {

@@ -22,7 +22,7 @@ public sealed class AuthStrictRateLimitPolicy : IRateLimiterPolicy<string>
         return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
         {
             PermitLimit = 5,
-            Window = TimeSpan.FromMinutes(1),
+            Window = TimeSpan.FromMinutes(3),
             SegmentsPerWindow = 6,
             QueueLimit = 0,
             AutoReplenishment = true
