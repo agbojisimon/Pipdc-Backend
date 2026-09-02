@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.JsonWebTokens;
 using PIPDC.API.Extensions;
 using PIPDC.Application.Auth;
+using PIPDC.Infrastructure.RateLimiting;
 
 namespace PIPDC.API.Controllers;
 
@@ -12,6 +14,7 @@ namespace PIPDC.API.Controllers;
 public class AuthController(IAuthService authService) : ControllerBase
 {
     [HttpPost("register")]
+    [EnableRateLimiting(RateLimitPolicies.AuthStrict)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken ct)
     {
         var result = await authService.RegisterAsync(request, ct);
@@ -19,6 +22,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting(RateLimitPolicies.AuthStrict)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
         var result = await authService.LoginAsync(request, ct);
@@ -40,6 +44,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     }
 
     [HttpPost("forgot-password")]
+    [EnableRateLimiting(RateLimitPolicies.AuthStrict)]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken ct)
     {
         var result = await authService.ForgotPasswordAsync(request.Email, ct);
@@ -47,6 +52,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     }
 
     [HttpPost("verify-email")]
+    [EnableRateLimiting(RateLimitPolicies.AuthStrict)]
     public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request, CancellationToken ct)
     {
         var result = await authService.VerifyEmailAsync(request, ct);
@@ -54,6 +60,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     }
 
     [HttpPost("resend-verification")]
+    [EnableRateLimiting(RateLimitPolicies.AuthStrict)]
     public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request, CancellationToken ct)
     {
         var result = await authService.ResendVerificationEmailAsync(request.Email, ct);
@@ -61,6 +68,7 @@ public class AuthController(IAuthService authService) : ControllerBase
     }
 
     [HttpPost("reset-password")]
+    [EnableRateLimiting(RateLimitPolicies.AuthStrict)]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken ct)
     {
         var result = await authService.ResetPasswordAsync(request, ct);

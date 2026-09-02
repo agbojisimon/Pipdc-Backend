@@ -1,10 +1,12 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.JsonWebTokens;
 using PIPDC.API.Extensions;
 using PIPDC.Application.Auth;
 using PIPDC.Application.Enquiries;
+using PIPDC.Infrastructure.RateLimiting;
 
 namespace PIPDC.API.Controllers;
 
@@ -18,6 +20,7 @@ public class EnquiriesController(IEnquiryService enquiryService) : ControllerBas
 
     [Authorize]
     [HttpPost]
+    [EnableRateLimiting(RateLimitPolicies.Writes)]
     public async Task<IActionResult> Create([FromBody] CreateEnquiryRequest request, CancellationToken ct)
     {
         var result = await enquiryService.CreateAsync(request, CurrentUserId, ct);
@@ -64,6 +67,7 @@ public class EnquiriesController(IEnquiryService enquiryService) : ControllerBas
 
     [Authorize(Roles = Roles.Admin)]
     [HttpPost("{id:int}/notify-agent")]
+    [EnableRateLimiting(RateLimitPolicies.Writes)]
     public async Task<IActionResult> NotifyAgent(int id, CancellationToken ct)
     {
         var result = await enquiryService.NotifyAgentAsync(id, ct);
@@ -90,6 +94,7 @@ public class EnquiriesController(IEnquiryService enquiryService) : ControllerBas
 
     [Authorize(Roles = "Agent,Admin")]
     [HttpPut("{id:int}")]
+    [EnableRateLimiting(RateLimitPolicies.Writes)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateEnquiryRequest request, CancellationToken ct)
     {
         var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
@@ -99,6 +104,7 @@ public class EnquiriesController(IEnquiryService enquiryService) : ControllerBas
 
     [Authorize(Roles = "Agent,Admin")]
     [HttpDelete("{id:int}")]
+    [EnableRateLimiting(RateLimitPolicies.Writes)]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
         var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub)!;
