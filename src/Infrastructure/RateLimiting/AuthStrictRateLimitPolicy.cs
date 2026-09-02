@@ -4,11 +4,12 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace PIPDC.Infrastructure.RateLimiting;
 
 /// <summary>
-/// Fixed-window limiter for authentication endpoints (login, register, forgot/reset
+/// Sliding-window limiter for authentication endpoints (login, register, forgot/reset
 /// password, email verification). These are brute-force / enumeration targets, so a
-/// deliberately tight per-IP allowance is used. Fixed window (not sliding) is
-/// appropriate here: the boundary-burst weakness is irrelevant against a login hammer,
-/// and fixed window is the cheapest possible accounting.
+/// deliberately tight per-IP allowance is used. Sliding window (not fixed) is used so
+/// the effective rate is a true "5 per rolling minute": a client cannot double its
+/// budget by straddling a fixed-window boundary (e.g. 5 requests at 00:59 and 5 more
+/// at 01:00). That boundary-burst hole is exactly what a login hammer would exploit.
 /// </summary>
 public sealed class AuthStrictRateLimitPolicy : IRateLimiterPolicy<string>
 {
@@ -18,10 +19,11 @@ public sealed class AuthStrictRateLimitPolicy : IRateLimiterPolicy<string>
     {
         var key = $"ip:{context.Connection.RemoteIpAddress}";
 
-        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        return RateLimitPartition.GetSlidingWindowLimiter(key, _ => new SlidingWindowRateLimiterOptions
         {
             PermitLimit = 5,
             Window = TimeSpan.FromMinutes(1),
+            SegmentsPerWindow = 6,
             QueueLimit = 0,
             AutoReplenishment = true
         });
