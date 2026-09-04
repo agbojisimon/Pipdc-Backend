@@ -11,6 +11,7 @@ using PIPDC.Application.Email;
 using PIPDC.Infrastructure.Auth;
 using PIPDC.Domain.Entities;
 using PIPDC.Infrastructure.Data;
+using PIPDC.Infrastructure.Captcha;
 using PIPDC.Infrastructure.Email;
 using PIPDC.Infrastructure.RateLimiting;
 
@@ -113,6 +114,11 @@ public static class DependencyInjection
         services.AddScoped<IEmailService, GmailApiEmailService>();
 
         services.AddRateLimiting();
+
+        // Cloudflare Turnstile anti-bot verification (server-side).
+        services.Configure<TurnstileSettings>(config.GetSection("Turnstile"));
+        services.AddHttpClient<TurnstileVerifier>(client =>
+            client.BaseAddress = new Uri("https://challenges.cloudflare.com"));
 
         return services;
     }
