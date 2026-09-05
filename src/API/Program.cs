@@ -4,6 +4,7 @@ using PIPDC.API.Extensions;
 using PIPDC.API.Hubs;
 using PIPDC.Application;
 using PIPDC.Infrastructure.Data;
+using PIPDC.Infrastructure.HealthChecks;
 using PIPDC.Infrastructure;
 using PIPDC.Domain.Common;
 using PIPDC.Domain.Enums;
@@ -126,6 +127,9 @@ app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Liveness + readiness probes (registered under Infrastructure.HealthChecks).
+app.MapHealthCheckEndpoints();
 
 app.MapHub<MessagingHub>("/hubs/messaging");
 
