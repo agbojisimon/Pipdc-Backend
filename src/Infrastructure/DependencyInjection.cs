@@ -116,6 +116,12 @@ public static class DependencyInjection
 
         services.AddRateLimiting();
 
+        // Cloudflare Turnstile anti-bot verification (server-side). Registered as a
+        // typed HttpClient so VerifyHumanAttribute can resolve the verifier.
+        services.Configure<TurnstileSettings>(config.GetSection("Turnstile"));
+        services.AddHttpClient<TurnstileVerifier>(client =>
+            client.BaseAddress = new Uri("https://challenges.cloudflare.com"));
+
         services.AddDatabaseHealthCheck();
 
         return services;
