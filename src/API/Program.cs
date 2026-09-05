@@ -103,8 +103,24 @@ app.Use(async (context, next) =>
     headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
     headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()";
 
-    headers["Content-Security-Policy"] =
-       "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+    if (app.Environment.IsDevelopment())
+    {
+        // Development: relax CSP just enough for Scalar's local UI (scripts, styles,
+        // inline bootstrap). Production keeps the strict allow-nothing policy below.
+        headers["Content-Security-Policy"] =
+           "default-src 'self' 'unsafe-inline'; " +
+           "script-src 'self' 'unsafe-inline'; " +
+           "style-src 'self' 'unsafe-inline'; " +
+           "img-src 'self' data:; " +
+           "connect-src 'self'; " +
+           "frame-ancestors 'none'; " +
+           "base-uri 'none'; form-action 'none'";
+    }
+    else
+    {
+        headers["Content-Security-Policy"] =
+           "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+    }
 
     await next();
 });

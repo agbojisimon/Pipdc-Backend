@@ -11,6 +11,7 @@ using PIPDC.Application.Email;
 using PIPDC.Infrastructure.Auth;
 using PIPDC.Domain.Entities;
 using PIPDC.Infrastructure.Data;
+using PIPDC.Infrastructure.Captcha;
 using PIPDC.Infrastructure.Email;
 using PIPDC.Infrastructure.HealthChecks;
 using PIPDC.Infrastructure.RateLimiting;
